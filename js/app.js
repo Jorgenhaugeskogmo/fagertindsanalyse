@@ -801,14 +801,16 @@ class App {
                 // Display cluster overview
                 this.displayClusterOverview(clusters);
                 
-                // Display cluster summary
-                this.displayClusterSummary(clusters);
+        // Display cluster summary and insights
+        this.displayClusterSummary(clusters);
+        this.displayMLInsights(clusters);
                 
                 // Display scatter plot
                 chartManager.createMLScatterPlot(clusters);
                 
                 // Display high-risk companies
                 this.displayHighRiskCompanies(this.currentRiskThreshold);
+        this.displayActionRecommendations(this.currentRiskThreshold);
                 
                 // Show results
                 document.getElementById('mlResults').style.display = 'block';
@@ -888,6 +890,7 @@ class App {
         
         // Update high-risk companies list
         this.displayHighRiskCompanies(threshold);
+        this.displayActionRecommendations(threshold);
     }
 
     displayClusterSummary(clusters) {
@@ -933,6 +936,96 @@ class App {
         });
         
         html += '</div>';
+        container.innerHTML = html;
+    }
+
+    displayMLInsights(clusters) {
+        const container = document.getElementById('mlInsights');
+        if (!container) return;
+
+        if (!clusters || clusters.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const totalCompanies = clusters.reduce((sum, c) => sum + c.size, 0);
+        if (totalCompanies === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const largestCluster = [...clusters].sort((a, b) => b.size - a.size)[0];
+        const longestSinceMove = [...clusters].sort((a, b) => b.stats.avgYearsSinceMove - a.stats.avgYearsSinceMove)[0];
+        const strongestGrowth = [...clusters]
+            .filter(c => c.stats.avgPercentChange > 0)
+            .sort((a, b) => b.stats.avgPercentChange - a.stats.avgPercentChange)[0];
+        const strongestDecline = [...clusters]
+            .filter(c => c.stats.avgPercentChange < 0)
+            .sort((a, b) => a.stats.avgPercentChange - b.stats.avgPercentChange)[0];
+
+        const positiveCompanies = clusters.reduce((sum, c) =>
+            c.stats.avgPercentChange > 0 ? sum + c.size : sum
+        , 0);
+        const positiveShare = ((positiveCompanies / totalCompanies) * 100).toFixed(0);
+
+        const insightCards = [];
+
+        if (largestCluster) {
+            insightCards.push({
+                title: 'Største cluster',
+                value: `${largestCluster.size} selskaper`,
+                subtitle: `${largestCluster.label}`,
+                color: largestCluster.color
+            });
+        }
+
+        if (longestSinceMove) {
+            insightCards.push({
+                title: 'Lengst siden flytting',
+                value: `${longestSinceMove.stats.avgYearsSinceMove.toFixed(1)} år`,
+                subtitle: `${longestSinceMove.size} selskaper i snitt`,
+                color: longestSinceMove.color
+            });
+        }
+
+        if (strongestGrowth) {
+            insightCards.push({
+                title: 'Sterkest vekst',
+                value: `${strongestGrowth.stats.avgPercentChange.toFixed(1)}%`,
+                subtitle: `${strongestGrowth.label}`,
+                color: strongestGrowth.color
+            });
+        }
+
+        if (strongestDecline) {
+            insightCards.push({
+                title: 'Kraftigst nedgang',
+                value: `${strongestDecline.stats.avgPercentChange.toFixed(1)}%`,
+                subtitle: `${strongestDecline.label}`,
+                color: strongestDecline.color
+            });
+        }
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">';
+        insightCards.forEach(card => {
+            html += `
+                <div style="background: ${card.color}15; border: 1px solid ${card.color}40; border-radius: 12px; padding: 1.5rem;">
+                    <div style="font-size: 0.75rem; color: ${card.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem;">${card.title}</div>
+                    <div style="font-size: 1.75rem; font-weight: 700; color: #0f172a;">${card.value}</div>
+                    <div style="font-size: 0.95rem; color: #475569; margin-top: 0.25rem;">${card.subtitle}</div>
+                </div>
+            `;
+        });
+
+        html += `
+            <div style="background: #0f172a; color: white; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+                <div style="font-size: 0.75rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.08em;">Positiv utvikling</div>
+                <div style="font-size: 1.75rem; font-weight: 700; margin: 0.5rem 0;">${positiveShare}%</div>
+                <div style="font-size: 0.95rem; opacity: 0.85;">av selskapene viser netto vekst i ansatte siden flyttingen.</div>
+            </div>
+        `;
+        html += '</div>';
+
         container.innerHTML = html;
     }
 
@@ -1069,6 +1162,122 @@ class App {
         `;
         
         container.innerHTML = html;
+    }
+
+    displayActionRecommendations(threshold = this.currentRiskThreshold) {
+        const container = document.getElementById('mlActionCenter');
+        if (!container) return;
+
+        if (!this.allMLCompanies || this.allMLCompanies.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const companyMap = new Map();
+        this.allMLCompanies.forEach(company => {
+            const existing = companyMap.get(company.orgnr);
+            if (!existing || company.riskScore > existing.riskScore || company.yearsSinceMove > existing.yearsSinceMove) {
+                companyMap.set(company.orgnr, company);
+            }
+        });
+
+        const uniqueCompanies = Array.from(companyMap.values());
+        const parsePercent = (value) => {
+            const num = parseFloat(value);
+            return Number.isFinite(num) ? num : 0;
+        };
+
+        const renewalCandidates = uniqueCompanies
+            .filter(c => (c.yearsSinceMove || 0) >= 7)
+            .sort((a, b) => b.riskScore - a.riskScore)
+            .slice(0, 3);
+
+        const expansionCandidates = uniqueCompanies
+            .filter(c => (c.employeeChangeSinceMove || 0) > 0 && parsePercent(c.changePercentSinceMove) >= 25)
+            .sort((a, b) => parsePercent(b.changePercentSinceMove) - parsePercent(a.changePercentSinceMove))
+            .slice(0, 3);
+
+        const contractionCandidates = uniqueCompanies
+            .filter(c => (c.employeeChangeSinceMove || 0) < 0 && parsePercent(c.changePercentSinceMove) <= -20)
+            .sort((a, b) => parsePercent(a.changePercentSinceMove) - parsePercent(b.changePercentSinceMove))
+            .slice(0, 3);
+
+        const highRiskNow = uniqueCompanies.filter(c => c.riskScore >= threshold);
+        const totalAtRiskEmployees = highRiskNow.reduce((sum, c) => sum + Math.abs(c.employeeChangeSinceMove || 0), 0);
+
+        const renderList = (title, items, emptyText, color) => {
+            if (!items || items.length === 0) {
+                return `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: ${color};">${title}</h4>
+                        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">${emptyText}</p>
+                    </div>
+                `;
+            }
+
+            let html = `
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
+                    <h4 style="margin: 0 0 0.75rem 0; color: ${color};">${title}</h4>
+                    <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.75rem;">
+            `;
+
+            items.forEach(item => {
+                const changePercent = parsePercent(item.changePercentSinceMove);
+                const changeBadgeColor = changePercent > 0 ? '#16a34a' : '#dc2626';
+                const changeBadgeBg = changePercent > 0 ? '#dcfce7' : '#fee2e2';
+                html += `
+                    <li style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                        <div>
+                            <div style="font-weight: 600; color: #0f172a;">${item.name}</div>
+                            <div style="font-size: 0.85rem; color: #64748b;">
+                                ${item.yearsSinceMove || 0} år siden flytting · ${(item.employeesAtMove ?? item.employeesBefore ?? 0)} → ${(item.employeesNow ?? item.employeesAfter ?? 0)} ansatte
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <span style="background: ${changeBadgeBg}; color: ${changeBadgeColor}; padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">
+                                ${changePercent > 0 ? '+' : ''}${changePercent.toFixed(1)}%
+                            </span>
+                            <span style="background: #0f172a; color: white; padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">
+                                Risiko: ${item.riskScore}
+                            </span>
+                        </div>
+                    </li>
+                `;
+            });
+
+            html += '</ul></div>';
+            return html;
+        };
+
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem;">
+                <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <h3 style="margin: 0 0 0.75rem 0; font-size: 1.1rem;">Porteføljeprioritering</h3>
+                        <p style="margin: 0; opacity: 0.85; font-size: 0.9rem;">
+                            ${highRiskNow.length} selskaper over terskelen (${threshold}). Samlet ansattendring siden flytting: ${totalAtRiskEmployees} personer.
+                        </p>
+                    </div>
+                    <div style="display: grid; gap: 0.5rem; font-size: 0.9rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Snitt risiko:</span>
+                            <strong>${highRiskNow.length > 0 ? (highRiskNow.reduce((sum, c) => sum + c.riskScore, 0) / highRiskNow.length).toFixed(0) : '0'}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Størst vekst:</span>
+                            <strong>${expansionCandidates[0] ? expansionCandidates[0].name : 'Ingen'}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Størst nedgang:</span>
+                            <strong>${contractionCandidates[0] ? contractionCandidates[0].name : 'Ingen'}</strong>
+                        </div>
+                    </div>
+                </div>
+                ${renderList('Utgående leieavtaler (≥7 år)', renewalCandidates, 'Ingen selskaper står nær utgående leieavtale akkurat nå.', '#c2410c')}
+                ${renderList('Ekspansjon – planlegg ekstra areal', expansionCandidates, 'Ingen tydelige vekstkandidater akkurat nå.', '#0f766e')}
+                ${renderList('Nedskalering – vurder mindre lokaler', contractionCandidates, 'Ingen markante nedskaleringskandidater.', '#b91c1c')}
+            </div>
+        `;
     }
 
     sortTable(sortKey) {
