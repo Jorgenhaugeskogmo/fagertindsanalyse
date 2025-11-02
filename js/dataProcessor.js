@@ -307,11 +307,42 @@ class DataProcessor {
         return prevKey !== currKey;
     }
 
-    // Get companies that moved N years ago
+    // Get companies that moved N years ago with employee change since move
     getCompaniesByMoveYear(yearsAgo) {
         const targetYear = this.getTargetYear(yearsAgo);
         if (!Number.isFinite(targetYear)) return [];
-        return this.processedData.addressChanges.filter(change => change.year === targetYear);
+        
+        const movers = this.processedData.addressChanges.filter(change => change.year === targetYear);
+        
+        // Enhance with employee change SINCE the move
+        return movers.map(mover => {
+            const company = this.companies.get(mover.orgnr);
+            if (!company || !company.timeline || company.timeline.length === 0) {
+                return { ...mover, employeeChangeSinceMove: 0, employeesAtMove: mover.employeesAfter };
+            }
+            
+            // Find the year they moved
+            const moveYearData = company.timeline.find(t => t.year === targetYear);
+            const latestYearData = company.timeline[company.timeline.length - 1];
+            
+            if (!moveYearData || !latestYearData) {
+                return { ...mover, employeeChangeSinceMove: 0, employeesAtMove: mover.employeesAfter };
+            }
+            
+            const employeeChangeSinceMove = latestYearData.employees - moveYearData.employees;
+            const changePercentSinceMove = moveYearData.employees > 0 
+                ? ((employeeChangeSinceMove / moveYearData.employees) * 100).toFixed(1)
+                : 'N/A';
+            
+            return {
+                ...mover,
+                employeesAtMove: moveYearData.employees,
+                employeesNow: latestYearData.employees,
+                employeeChangeSinceMove: employeeChangeSinceMove,
+                changePercentSinceMove: changePercentSinceMove,
+                yearsSinceMove: latestYearData.year - targetYear
+            };
+        });
     }
 
     // Get the absolute year for a relative move filter

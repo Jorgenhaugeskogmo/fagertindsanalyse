@@ -251,42 +251,75 @@ class App {
     updateTable(data, limit = 50) {
         const tbody = document.getElementById('resultsTableBody');
         const tableContainer = document.querySelector('.table-container');
+        const tableNote = document.getElementById('tableNote');
         
         if (data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #64748b;">Ingen resultater funnet</td></tr>';
             // Remove show more button if exists
             const showMoreBtn = tableContainer.querySelector('.show-more-btn');
             if (showMoreBtn) showMoreBtn.remove();
+            if (tableNote) tableNote.style.display = 'none';
             return;
         }
 
         // Display limited or all data
         const displayData = limit ? data.slice(0, limit) : data;
         
+        // Check if we're showing data with "since move" information
+        const showSinceMove = displayData.some(item => item.employeeChangeSinceMove !== undefined);
+        
+        // Show/hide note
+        if (tableNote) {
+            tableNote.style.display = showSinceMove ? 'block' : 'none';
+        }
+        
         tbody.innerHTML = displayData.map(item => {
-            const changeClass = item.employeeChange > 0 ? 'change-positive' : 
-                               item.employeeChange < 0 ? 'change-negative' : '';
+            let changeClass, changeValue, changePercent;
             
-            // Check for extreme changes (>200% or <-50% or large absolute changes)
-            const changePercent = parseFloat(item.employeeChangePercent);
+            if (showSinceMove && item.employeeChangeSinceMove !== undefined) {
+                // Show change SINCE the move
+                changeClass = item.employeeChangeSinceMove > 0 ? 'change-positive' : 
+                             item.employeeChangeSinceMove < 0 ? 'change-negative' : '';
+                changeValue = item.employeeChangeSinceMove;
+                changePercent = item.changePercentSinceMove;
+            } else {
+                // Show change AT the move
+                changeClass = item.employeeChange > 0 ? 'change-positive' : 
+                             item.employeeChange < 0 ? 'change-negative' : '';
+                changeValue = item.employeeChange;
+                changePercent = item.employeeChangePercent;
+            }
+            
+            // Check for extreme changes
+            const changePercentNum = parseFloat(changePercent);
             const isExtremeChange = (
-                (!isNaN(changePercent) && (changePercent > 200 || changePercent < -50)) ||
-                (Math.abs(item.employeeChange) > 100 && item.employeesBefore > 0)
+                (!isNaN(changePercentNum) && (changePercentNum > 200 || changePercentNum < -50)) ||
+                (Math.abs(changeValue) > 100)
             );
             
             const warningIcon = isExtremeChange ? '<span class="warning-icon" title="Ekstrem endring - vurder datakvalitet">⚠️</span> ' : '';
+            
+            // Determine what to show in the "employees" columns
+            let empBefore, empAfter;
+            if (showSinceMove && item.employeesAtMove !== undefined) {
+                empBefore = item.employeesAtMove;
+                empAfter = item.employeesNow;
+            } else {
+                empBefore = item.employeesBefore;
+                empAfter = item.employeesAfter;
+            }
             
             return `
                 <tr data-orgnr="${item.orgnr}" class="${isExtremeChange ? 'extreme-change-row' : ''}">
                     <td>${item.orgnr}</td>
                     <td>${warningIcon}${item.name}</td>
                     <td>${item.year}</td>
-                    <td>${item.oldAddress} ${item.oldPostnr ? item.oldPostnr : ''} ${item.oldPoststed ? item.oldPoststed : ''}</td>
-                    <td>${item.newAddress} ${item.newPostnr ? item.newPostnr : ''} ${item.newPoststed ? item.newPoststed : ''}</td>
-                    <td>${item.employeesBefore}</td>
-                    <td>${item.employeesAfter}</td>
-                    <td class="${changeClass}">${item.employeeChange > 0 ? '+' : ''}${item.employeeChange}</td>
-                    <td class="${changeClass}">${item.employeeChangePercent !== 'N/A' ? (item.employeeChange > 0 ? '+' : '') + item.employeeChangePercent + '%' : 'N/A'}</td>
+                    <td>${item.oldAddress || ''} ${item.oldPostnr ? item.oldPostnr : ''} ${item.oldPoststed ? item.oldPoststed : ''}</td>
+                    <td>${item.newAddress || ''} ${item.newPostnr ? item.newPostnr : ''} ${item.newPoststed ? item.newPoststed : ''}</td>
+                    <td>${empBefore}</td>
+                    <td>${empAfter}</td>
+                    <td class="${changeClass}">${changeValue > 0 ? '+' : ''}${changeValue}</td>
+                    <td class="${changeClass}">${changePercent !== 'N/A' ? (changeValue > 0 ? '+' : '') + changePercent + '%' : 'N/A'}</td>
                 </tr>
             `;
         }).join('');
@@ -487,14 +520,14 @@ class App {
                 const year8 = new Date().getFullYear() - 8;
                 icon = '🏢';
                 title = `Selskaper som flyttet i ${year8}`;
-                subtitle = `Viser ${count} selskaper som endret adresse for 8 år siden`;
+                subtitle = `Viser ${count} selskaper sortert etter størst endring i ansatte SIDEN flyttingen (potensielle utgående leieavtaler)`;
                 alertClass = '';
                 break;
             case '3years':
                 const year3 = new Date().getFullYear() - 3;
                 icon = '🏢';
                 title = `Selskaper som flyttet i ${year3}`;
-                subtitle = `Viser ${count} selskaper som endret adresse for 3 år siden`;
+                subtitle = `Viser ${count} selskaper sortert etter størst endring i ansatte SIDEN flyttingen (potensielle utgående leieavtaler)`;
                 alertClass = '';
                 break;
             default:
@@ -557,11 +590,15 @@ class App {
                 break;
             case '8years':
                 filteredData = dataProcessor.getCompaniesByMoveYear(8);
+                // Sort by change SINCE the move
+                filteredData.sort((a, b) => Math.abs(b.employeeChangeSinceMove || 0) - Math.abs(a.employeeChangeSinceMove || 0));
                 document.getElementById('yearFilter').value = '8';
                 document.getElementById('changeType').value = 'all';
                 break;
             case '3years':
                 filteredData = dataProcessor.getCompaniesByMoveYear(3);
+                // Sort by change SINCE the move
+                filteredData.sort((a, b) => Math.abs(b.employeeChangeSinceMove || 0) - Math.abs(a.employeeChangeSinceMove || 0));
                 document.getElementById('yearFilter').value = '3';
                 document.getElementById('changeType').value = 'all';
                 break;
