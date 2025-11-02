@@ -874,11 +874,11 @@ class App {
         this.updateTable(sortedCompanies, false);
         exportManager.setData(sortedCompanies, dataProcessor.getStatistics());
 
-        // Scroll to results
+        // Scroll to alert (right above table)
         setTimeout(() => {
-            document.getElementById('resultsSection').scrollIntoView({ 
+            alertDiv.scrollIntoView({ 
                 behavior: 'smooth', 
-                block: 'start' 
+                block: 'center' 
             });
         }, 100);
     }
