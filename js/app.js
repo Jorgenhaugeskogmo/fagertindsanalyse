@@ -183,34 +183,55 @@ class App {
     }
 
     displayStatistics(stats) {
+        this.updateYearFilterOptions(stats);
+
         const statsGrid = document.getElementById('statsGrid');
+        const movers8Label = stats.targetYear8YearsAgo
+            ? `Flyttet for 8 år siden (${stats.targetYear8YearsAgo})`
+            : 'Flyttet for 8 år siden';
+        const movers3Label = stats.targetYear3YearsAgo
+            ? `Flyttet for 3 år siden (${stats.targetYear3YearsAgo})`
+            : 'Flyttet for 3 år siden';
         
         statsGrid.innerHTML = `
-            <div class="stat-card info">
+            <div class="stat-card info" data-filter="all" style="cursor: pointer;" title="Klikk for å vise alle selskaper">
                 <div class="stat-value">${stats.totalCompanies}</div>
                 <div class="stat-label">Totalt selskaper</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" data-filter="moves" style="cursor: pointer;" title="Klikk for å vise alle adresseendringer">
                 <div class="stat-value">${stats.totalAddressChanges}</div>
                 <div class="stat-label">Adresseendringer</div>
             </div>
-            <div class="stat-card success">
+            <div class="stat-card success" data-filter="growth" style="cursor: pointer;" title="Klikk for å vise selskaper med vekst">
                 <div class="stat-value">${stats.companiesWithGrowth}</div>
                 <div class="stat-label">Selskaper med vekst</div>
             </div>
-            <div class="stat-card danger">
+            <div class="stat-card danger" data-filter="decline" style="cursor: pointer;" title="Klikk for å vise selskaper med nedgang">
                 <div class="stat-value">${stats.companiesWithReduction}</div>
                 <div class="stat-label">Selskaper med nedgang</div>
             </div>
-            <div class="stat-card info">
+            <div class="stat-card info" data-filter="8years" style="cursor: pointer;" title="Klikk for å vise selskaper som flyttet for 8 år siden">
                 <div class="stat-value">${stats.movers8YearsAgo}</div>
-                <div class="stat-label">Flyttet for 8 år siden</div>
+                <div class="stat-label">${movers8Label}</div>
             </div>
-            <div class="stat-card info">
+            <div class="stat-card info" data-filter="3years" style="cursor: pointer;" title="Klikk for å vise selskaper som flyttet for 3 år siden">
                 <div class="stat-value">${stats.movers3YearsAgo}</div>
-                <div class="stat-label">Flyttet for 3 år siden</div>
+                <div class="stat-label">${movers3Label}</div>
             </div>
         `;
+        
+        // Add click handlers to stat cards
+        statsGrid.querySelectorAll('.stat-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const filter = card.dataset.filter;
+                this.quickFilter(filter);
+                // Scroll to results
+                document.getElementById('resultsSection').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            });
+        });
     }
 
     displayResults(data) {
@@ -236,15 +257,22 @@ class App {
         this.updateTable(data);
     }
 
-    updateTable(data) {
+    updateTable(data, limit = 50) {
         const tbody = document.getElementById('resultsTableBody');
+        const tableContainer = document.querySelector('.table-container');
         
         if (data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #64748b;">Ingen resultater funnet</td></tr>';
+            // Remove show more button if exists
+            const showMoreBtn = tableContainer.querySelector('.show-more-btn');
+            if (showMoreBtn) showMoreBtn.remove();
             return;
         }
 
-        tbody.innerHTML = data.map(item => {
+        // Display limited or all data
+        const displayData = limit ? data.slice(0, limit) : data;
+        
+        tbody.innerHTML = displayData.map(item => {
             const changeClass = item.employeeChange > 0 ? 'change-positive' : 
                                item.employeeChange < 0 ? 'change-negative' : '';
             
@@ -270,6 +298,22 @@ class App {
                 this.showCompanyDetails(orgnr);
             });
         });
+        
+        // Add or update "Show More" button
+        let showMoreBtn = tableContainer.querySelector('.show-more-btn');
+        if (data.length > limit && limit !== null) {
+            if (!showMoreBtn) {
+                showMoreBtn = document.createElement('button');
+                showMoreBtn.className = 'btn btn-secondary show-more-btn';
+                showMoreBtn.style.width = '100%';
+                showMoreBtn.style.marginTop = '1rem';
+                tableContainer.appendChild(showMoreBtn);
+            }
+            showMoreBtn.textContent = `Vis alle ${data.length} resultater (viser ${displayData.length})`;
+            showMoreBtn.onclick = () => this.updateTable(data, null);
+        } else if (showMoreBtn) {
+            showMoreBtn.remove();
+        }
     }
 
     displayTimeline() {
@@ -348,6 +392,54 @@ class App {
         detailSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    quickFilter(filter) {
+        let filteredData;
+        const stats = dataProcessor.getStatistics();
+        
+        switch(filter) {
+            case 'all':
+                filteredData = dataProcessor.processedData.addressChanges;
+                document.getElementById('yearFilter').value = 'all';
+                document.getElementById('changeType').value = 'all';
+                break;
+            case 'moves':
+                filteredData = dataProcessor.processedData.addressChanges;
+                document.getElementById('yearFilter').value = 'all';
+                document.getElementById('changeType').value = 'all';
+                break;
+            case 'growth':
+                filteredData = dataProcessor.processedData.addressChanges.filter(c => c.employeeChange > 0);
+                document.getElementById('changeType').value = 'increase';
+                document.getElementById('yearFilter').value = 'all';
+                break;
+            case 'decline':
+                filteredData = dataProcessor.processedData.addressChanges.filter(c => c.employeeChange < 0);
+                document.getElementById('changeType').value = 'decrease';
+                document.getElementById('yearFilter').value = 'all';
+                break;
+            case '8years':
+                filteredData = dataProcessor.getCompaniesByMoveYear(8);
+                document.getElementById('yearFilter').value = '8';
+                document.getElementById('changeType').value = 'all';
+                break;
+            case '3years':
+                filteredData = dataProcessor.getCompaniesByMoveYear(3);
+                document.getElementById('yearFilter').value = '3';
+                document.getElementById('changeType').value = 'all';
+                break;
+            default:
+                filteredData = dataProcessor.processedData.addressChanges;
+        }
+        
+        // Sort by absolute change
+        filteredData.sort((a, b) => 
+            Math.abs(b.employeeChange) - Math.abs(a.employeeChange)
+        );
+        
+        this.updateTable(filteredData);
+        exportManager.setData(filteredData, stats);
+    }
+
     applyFilters() {
         const yearFilter = document.getElementById('yearFilter').value;
         const changeType = document.getElementById('changeType').value;
@@ -392,10 +484,35 @@ class App {
         document.getElementById('topCount').value = '10';
         this.displayResults(dataProcessor.processedData.addressChanges);
     }
+
+    updateYearFilterOptions(stats) {
+        const yearFilter = document.getElementById('yearFilter');
+        if (!yearFilter) return;
+
+        const earliestYear = stats.earliestYear;
+
+        yearFilter.querySelectorAll('option[data-years-ago]').forEach(option => {
+            const yearsAgo = parseInt(option.dataset.yearsAgo, 10);
+            if (!Number.isFinite(yearsAgo)) return;
+
+            const targetYear = dataProcessor.getTargetYear(yearsAgo);
+            if (Number.isFinite(targetYear)) {
+                option.textContent = `For ${yearsAgo} år siden (${targetYear})`;
+                option.disabled = Number.isFinite(earliestYear) ? targetYear < earliestYear : false;
+            } else {
+                option.textContent = `For ${yearsAgo} år siden`;
+                option.disabled = true;
+            }
+        });
+
+        const selectedOption = yearFilter.querySelector(`option[value="${yearFilter.value}"]`);
+        if (selectedOption && selectedOption.disabled) {
+            yearFilter.value = 'all';
+        }
+    }
 }
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     const app = new App();
 });
-

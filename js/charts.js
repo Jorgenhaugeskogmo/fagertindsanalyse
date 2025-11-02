@@ -14,17 +14,40 @@ class ChartManager {
 
     // Create employee change chart
     createEmployeeChangeChart(data, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'Topp 15 selskaper etter endring i antall ansatte';
+        heading.style.marginBottom = '1rem';
+        heading.style.fontSize = '1.125rem';
+        heading.style.fontWeight = '600';
+        container.appendChild(heading);
+
+        if (!data || data.length === 0) {
+            this.renderEmptyState(container, 'Ingen datapunkter tilgjengelig for ansattutvikling.');
+            return;
+        }
+
+        const canvasWrapper = document.createElement('div');
+        canvasWrapper.style.height = '400px';
+        canvasWrapper.style.position = 'relative';
+        
         const canvas = document.createElement('canvas');
         canvas.id = 'employeeChart';
-        canvas.height = 100;
-        
-        const container = document.getElementById(containerId);
-        container.innerHTML = '';
-        container.appendChild(canvas);
+        canvasWrapper.appendChild(canvas);
+        container.appendChild(canvasWrapper);
 
         const sortedData = [...data].sort((a, b) => 
             Math.abs(b.totalChange) - Math.abs(a.totalChange)
         ).slice(0, 15);
+
+        if (sortedData.length === 0) {
+            this.renderEmptyState(container, 'Ingen datapunkter tilgjengelig for ansattutvikling.');
+            return;
+        }
 
         const labels = sortedData.map(d => this.truncateText(d.name, 30));
         const changes = sortedData.map(d => d.totalChange);
@@ -83,47 +106,41 @@ class ChartManager {
                         }
                     }
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        },
-                        ticks: {
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 11
-                            },
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
-                    }
-                }
+                scales: this.buildDefaultScales({ rotateX: true })
             }
         });
     }
 
     // Create timeline chart
     createTimelineChart(changesByYear, containerId) {
-        const canvas = document.createElement('canvas');
-        canvas.id = 'timelineChart';
-        canvas.height = 80;
-        
         const container = document.getElementById(containerId);
-        container.innerHTML = '<h3 style="margin-bottom: 1rem; font-size: 1.125rem; font-weight: 600;">Adresseendringer per år</h3>';
-        container.appendChild(canvas);
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'Adresseendringer per år';
+        heading.style.marginBottom = '1rem';
+        heading.style.fontSize = '1.125rem';
+        heading.style.fontWeight = '600';
+        container.appendChild(heading);
 
         const years = Object.keys(changesByYear).sort();
         const counts = years.map(year => changesByYear[year].length);
+
+        if (years.length === 0) {
+            this.renderEmptyState(container, 'Ingen adresseendringer funnet i datasettet.');
+            return;
+        }
+
+        const canvasWrapper = document.createElement('div');
+        canvasWrapper.style.height = '300px';
+        canvasWrapper.style.position = 'relative';
+        
+        const canvas = document.createElement('canvas');
+        canvas.id = 'timelineChart';
+        canvasWrapper.appendChild(canvas);
+        container.appendChild(canvasWrapper);
 
         const ctx = canvas.getContext('2d');
         this.charts.timelineChart = new Chart(ctx, {
@@ -166,46 +183,36 @@ class ChartManager {
                         }
                     }
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        },
-                        ticks: {
-                            font: {
-                                size: 12
-                            },
-                            stepSize: 1
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 12
-                            }
-                        }
-                    }
-                }
+                scales: this.buildDefaultScales({ stepSizeY: 1 })
             }
         });
     }
 
     // Create company timeline chart
     createCompanyTimelineChart(company, containerId) {
-        const canvas = document.createElement('canvas');
-        canvas.id = 'companyTimelineChart';
-        canvas.height = 80;
-        
         const container = document.getElementById(containerId);
+        if (!container) return;
+
+        container.innerHTML = '';
+
         const chartWrapper = document.createElement('div');
         chartWrapper.style.marginTop = '2rem';
         chartWrapper.innerHTML = '<h3 style="margin-bottom: 1rem; font-size: 1.125rem; font-weight: 600;">Utvikling i antall ansatte</h3>';
-        chartWrapper.appendChild(canvas);
         container.appendChild(chartWrapper);
+
+        if (!company || !company.timeline || company.timeline.length === 0) {
+            this.renderEmptyState(chartWrapper, 'Ingen tidslinjedata tilgjengelig for dette selskapet.');
+            return;
+        }
+
+        const canvasWrapper = document.createElement('div');
+        canvasWrapper.style.height = '300px';
+        canvasWrapper.style.position = 'relative';
+        
+        const canvas = document.createElement('canvas');
+        canvas.id = 'companyTimelineChart';
+        canvasWrapper.appendChild(canvas);
+        chartWrapper.appendChild(canvasWrapper);
 
         const years = company.timeline.map(t => t.year);
         const employees = company.timeline.map(t => t.employees);
@@ -251,49 +258,49 @@ class ChartManager {
                         }
                     }
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        },
-                        ticks: {
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 12
-                            }
-                        }
-                    }
-                }
+                scales: this.buildDefaultScales()
             }
         });
     }
 
     // Create distribution chart
     createDistributionChart(data, containerId) {
-        const canvas = document.createElement('canvas');
-        canvas.id = 'distributionChart';
-        canvas.height = 80;
-        
         const container = document.getElementById(containerId);
+        if (!container) return;
+
         const wrapper = document.createElement('div');
         wrapper.style.marginTop = '2rem';
-        wrapper.innerHTML = '<h3 style="margin-bottom: 1rem; font-size: 1.125rem; font-weight: 600;">Fordeling av vekst vs nedgang</h3>';
-        wrapper.appendChild(canvas);
         container.appendChild(wrapper);
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'Fordeling av vekst vs nedgang';
+        heading.style.marginBottom = '1rem';
+        heading.style.fontSize = '1.125rem';
+        heading.style.fontWeight = '600';
+        wrapper.appendChild(heading);
+
+        if (!data || data.length === 0) {
+            this.renderEmptyState(wrapper, 'Ingen selskaper har registrert ansattendringer.');
+            return;
+        }
 
         const growth = data.filter(d => d.totalChange > 0).length;
         const decline = data.filter(d => d.totalChange < 0).length;
         const noChange = data.filter(d => d.totalChange === 0).length;
+
+        if (growth === 0 && decline === 0 && noChange === 0) {
+            this.renderEmptyState(wrapper, 'Ingen selskaper har registrert ansattendringer.');
+            return;
+        }
+
+        const canvasWrapper = document.createElement('div');
+        canvasWrapper.style.height = '300px';
+        canvasWrapper.style.position = 'relative';
+        
+        const canvas = document.createElement('canvas');
+        canvas.id = 'distributionChart';
+        canvasWrapper.appendChild(canvas);
+        wrapper.appendChild(canvasWrapper);
 
         const ctx = canvas.getContext('2d');
         this.charts.distributionChart = new Chart(ctx, {
@@ -350,8 +357,49 @@ class ChartManager {
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';
     }
+
+    // Render empty state message
+    renderEmptyState(container, message) {
+        const emptyState = document.createElement('div');
+        emptyState.textContent = message;
+        emptyState.style.padding = '1rem';
+        emptyState.style.color = '#64748b';
+        emptyState.style.background = '#f8fafc';
+        emptyState.style.borderRadius = '0.75rem';
+        emptyState.style.border = '1px dashed #cbd5f5';
+        container.appendChild(emptyState);
+    }
+
+    // Default chart scales helper
+    buildDefaultScales({ rotateX = false, stepSizeY = undefined } = {}) {
+        return {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                    font: {
+                        size: 12
+                    },
+                    stepSize: stepSizeY
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    font: {
+                        size: 12
+                    },
+                    maxRotation: rotateX ? 45 : 0,
+                    minRotation: rotateX ? 45 : 0
+                }
+            }
+        };
+    }
 }
 
 // Create global instance
 const chartManager = new ChartManager();
-

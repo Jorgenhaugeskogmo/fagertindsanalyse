@@ -75,6 +75,8 @@ class ExportManager {
         });
         doc.text(`Generert: ${date}`, 15, 28);
 
+        let yPos = 38;
+
         // Add statistics if available
         if (this.stats) {
             doc.setFontSize(12);
@@ -83,14 +85,20 @@ class ExportManager {
             
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
-            let yPos = 45;
+            yPos = 45;
             
             const statsText = [
                 `Totalt antall selskaper: ${this.stats.totalCompanies}`,
                 `Totale adresseendringer: ${this.stats.totalAddressChanges}`,
                 `Selskaper med vekst: ${this.stats.companiesWithGrowth}`,
                 `Selskaper med nedgang: ${this.stats.companiesWithReduction}`,
-                `Periodedekning: ${this.stats.yearRange}`
+                `Periodedekning: ${this.stats.yearRange}`,
+                this.stats.targetYear8YearsAgo
+                    ? `Flyttet for 8 år siden (${this.stats.targetYear8YearsAgo}): ${this.stats.movers8YearsAgo}`
+                    : `Flyttet for 8 år siden: ${this.stats.movers8YearsAgo}`,
+                this.stats.targetYear3YearsAgo
+                    ? `Flyttet for 3 år siden (${this.stats.targetYear3YearsAgo}): ${this.stats.movers3YearsAgo}`
+                    : `Flyttet for 3 år siden: ${this.stats.movers3YearsAgo}`
             ];
 
             statsText.forEach(text => {
@@ -99,8 +107,6 @@ class ExportManager {
             });
 
             yPos += 5;
-        } else {
-            var yPos = 38;
         }
 
         // Prepare table data
@@ -227,4 +233,3 @@ class ExportManager {
 
 // Create global instance
 const exportManager = new ExportManager();
-

@@ -9,23 +9,29 @@ class DataProcessor {
 
     // Parse CSV content
     parseCSV(content, filename) {
-        const lines = content.split('\n').filter(line => line.trim());
+        const normalizedContent = content
+            .replace(/^\uFEFF/, '') // Remove BOM
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n');
+        const lines = normalizedContent.split('\n').filter(line => line.trim());
         if (lines.length < 3) return [];
 
         // First line is header, second line is separator
-        const headers = lines[0].split(';').map(h => h.trim());
+        const headers = this.parseCSVLine(lines[0]).map(h => h.trim());
         const dataLines = lines.slice(2); // Skip header and separator line
 
-        const data = dataLines.map(line => {
+        const data = dataLines.map((line) => {
+            if (!line.trim()) return null;
+
             const values = this.parseCSVLine(line);
             const row = {};
             
             headers.forEach((header, index) => {
-                row[header] = values[index] ? values[index].trim() : '';
+                row[header] = values[index] !== undefined ? values[index].trim() : '';
             });
 
-            return row;
-        });
+            return Object.values(row).some(value => value !== '') ? row : null;
+        }).filter(Boolean);
 
         // Extract year from filename
         const yearMatch = filename.match(/(\d{4})/);
@@ -36,7 +42,29 @@ class DataProcessor {
 
     // Parse CSV line handling semicolons
     parseCSVLine(line) {
-        const values = line.split(';');
+        const values = [];
+        let current = '';
+        let insideQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+
+            if (char === '"') {
+                if (insideQuotes && line[i + 1] === '"') {
+                    current += '"';
+                    i++; // Skip escaped quote
+                } else {
+                    insideQuotes = !insideQuotes;
+                }
+            } else if (char === ';' && !insideQuotes) {
+                values.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+
+        values.push(current);
         return values;
     }
 
@@ -55,6 +83,13 @@ class DataProcessor {
 
         // Sort by year
         this.rawData.sort((a, b) => (a.year || 0) - (b.year || 0));
+
+        const availableYears = this.rawData
+            .map(d => d.year)
+            .filter(year => Number.isFinite(year));
+        if (availableYears.length > 0) {
+            this.currentYear = Math.max(...availableYears);
+        }
 
         // Build company timeline
         this.buildCompanyTimeline();
@@ -79,6 +114,9 @@ class DataProcessor {
     buildCompanyTimeline() {
         this.rawData.forEach(yearData => {
             const year = yearData.year;
+            if (!Number.isFinite(year)) {
+                return;
+            }
             
             yearData.data.forEach(row => {
                 const orgnr = row['Orgnr'];
@@ -99,15 +137,25 @@ class DataProcessor {
                     company.name = row['Navn'];
                 }
 
-                company.timeline.push({
+                const employeesValue = parseInt((row['Antall ansatte'] || '').replace(/\s/g, ''), 10);
+                const employees = Number.isFinite(employeesValue) ? employeesValue : 0;
+
+                const timelineEntry = {
                     year: year,
                     address: row['Forretningsadresse'] || '',
                     postnr: row['Fadr postnr'] || '',
                     poststed: row['Fadr poststed'] || '',
-                    employees: parseInt(row['Antall ansatte']) || 0,
+                    employees: employees,
                     stiftelsesdato: row['Stiftelsesdato'] || '',
                     organisasjonsform: row['Organisasjonsform'] || ''
-                });
+                };
+
+                const existingIndex = company.timeline.findIndex(t => t.year === year);
+                if (existingIndex >= 0) {
+                    company.timeline[existingIndex] = timelineEntry;
+                } else {
+                    company.timeline.push(timelineEntry);
+                }
             });
         });
 
@@ -131,7 +179,7 @@ class DataProcessor {
                 const prev = timeline[i - 1];
                 const curr = timeline[i];
 
-                if (this.hasAddressChanged(prev.address, curr.address)) {
+                if (this.hasLocationChanged(prev, curr)) {
                     addressChanges.push({
                         orgnr: company.orgnr,
                         name: company.name,
@@ -173,28 +221,72 @@ class DataProcessor {
             }
         });
 
+        const yearsInDataset = Array.from(
+            new Set(
+                this.rawData
+                    .map(d => d.year)
+                    .filter(year => Number.isFinite(year))
+            )
+        ).sort((a, b) => a - b);
+
+        const earliestYear = yearsInDataset.length > 0 ? yearsInDataset[0] : null;
+        const latestYear = yearsInDataset.length > 0 ? yearsInDataset[yearsInDataset.length - 1] : null;
+
         this.processedData = {
             companies: Array.from(this.companies.values()),
             addressChanges: addressChanges,
             employeeChanges: employeeChanges,
-            years: this.rawData.map(d => d.year).filter(y => y),
+            years: yearsInDataset,
             totalCompanies: this.companies.size,
-            totalAddressChanges: addressChanges.length
+            totalAddressChanges: addressChanges.length,
+            earliestYear,
+            latestYear
         };
     }
 
-    // Check if address has changed
-    hasAddressChanged(addr1, addr2) {
-        if (!addr1 || !addr2) return false;
-        const clean1 = addr1.toLowerCase().replace(/\s+/g, ' ').trim();
-        const clean2 = addr2.toLowerCase().replace(/\s+/g, ' ').trim();
-        return clean1 !== clean2;
+    // Normalize address components and detect changes
+    hasLocationChanged(previous, current) {
+        if (!previous && !current) return false;
+
+        const normalize = (value) => (value || '')
+            .toString()
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const buildLocationKey = (entry) => {
+            if (!entry) return '';
+            const parts = [
+                normalize(entry.address),
+                normalize(entry.postnr),
+                normalize(entry.poststed)
+            ].filter(Boolean);
+            return parts.join('|');
+        };
+
+        const prevKey = buildLocationKey(previous);
+        const currKey = buildLocationKey(current);
+
+        if (!prevKey && !currKey) {
+            return false;
+        }
+
+        return prevKey !== currKey;
     }
 
     // Get companies that moved N years ago
     getCompaniesByMoveYear(yearsAgo) {
-        const targetYear = this.currentYear - yearsAgo;
+        const targetYear = this.getTargetYear(yearsAgo);
+        if (!Number.isFinite(targetYear)) return [];
         return this.processedData.addressChanges.filter(change => change.year === targetYear);
+    }
+
+    // Get the absolute year for a relative move filter
+    getTargetYear(yearsAgo) {
+        if (!Number.isFinite(yearsAgo)) return null;
+        const baseYear = this.processedData.latestYear ?? this.currentYear;
+        if (!Number.isFinite(baseYear)) return null;
+        return baseYear - yearsAgo;
     }
 
     // Get companies with largest employee changes
@@ -256,6 +348,8 @@ class DataProcessor {
 
         const movers8Years = this.getCompaniesByMoveYear(8);
         const movers3Years = this.getCompaniesByMoveYear(3);
+        const targetYear8 = this.getTargetYear(8);
+        const targetYear3 = this.getTargetYear(3);
 
         return {
             totalCompanies: this.processedData.totalCompanies,
@@ -266,8 +360,12 @@ class DataProcessor {
             totalEmployeeDecrease: totalDecrease,
             movers8YearsAgo: movers8Years.length,
             movers3YearsAgo: movers3Years.length,
-            yearRange: this.processedData.years.length > 0 
-                ? `${Math.min(...this.processedData.years)}-${Math.max(...this.processedData.years)}`
+            latestYear: this.processedData.latestYear || null,
+            earliestYear: this.processedData.earliestYear || null,
+            targetYear8YearsAgo: Number.isFinite(targetYear8) ? targetYear8 : null,
+            targetYear3YearsAgo: Number.isFinite(targetYear3) ? targetYear3 : null,
+            yearRange: this.processedData.earliestYear && this.processedData.latestYear
+                ? `${this.processedData.earliestYear}-${this.processedData.latestYear}`
                 : 'N/A'
         };
     }
@@ -310,4 +408,3 @@ class DataProcessor {
 
 // Create global instance
 const dataProcessor = new DataProcessor();
-
