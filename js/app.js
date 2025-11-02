@@ -521,31 +521,31 @@ class App {
         
         switch(filterType) {
             case 'all':
-                icon = '📊';
+                icon = 'Alle';
                 title = 'Alle selskaper';
                 subtitle = `Viser ${count} selskaper med adresseendringer`;
                 alertClass = '';
                 break;
             case 'moves':
-                icon = '📍';
+                icon = 'Flytting';
                 title = 'Alle adresseendringer';
                 subtitle = `Viser ${count} adresseendringer`;
                 alertClass = '';
                 break;
             case 'growth':
-                icon = '📈';
+                icon = 'Vekst';
                 title = 'Selskaper med vekst';
                 subtitle = `Viser ${count} selskaper som har økt antall ansatte`;
                 alertClass = 'success';
                 break;
             case 'decline':
-                icon = '📉';
+                icon = 'Nedgang';
                 title = 'Selskaper med nedgang';
                 subtitle = `Viser ${count} selskaper som har redusert antall ansatte`;
                 alertClass = 'danger';
                 break;
             case 'extreme':
-                icon = '⚠️';
+                icon = 'Ekstrem';
                 title = 'Selskaper med ekstreme endringer';
                 subtitle = `Viser ${count} selskaper med usannsynlig store endringer (>200% vekst, <-50% nedgang, eller >±100 ansatte). Vurder datakvalitet.`;
                 alertClass = '';
@@ -553,14 +553,14 @@ class App {
                 break;
             case '8years':
                 const year8 = new Date().getFullYear() - 8;
-                icon = '🏢';
+                icon = '8 år';
                 title = `Selskaper som flyttet i ${year8}`;
                 subtitle = `Viser ${count} selskaper sortert etter størst endring i ansatte SIDEN flyttingen (potensielle utgående leieavtaler)`;
                 alertClass = '';
                 break;
             case '3years':
                 const year3 = new Date().getFullYear() - 3;
-                icon = '🏢';
+                icon = '3 år';
                 title = `Selskaper som flyttet i ${year3}`;
                 subtitle = `Viser ${count} selskaper sortert etter størst endring i ansatte SIDEN flyttingen (potensielle utgående leieavtaler)`;
                 alertClass = '';
@@ -574,7 +574,7 @@ class App {
         alertDiv.style.display = 'flex';
         alertDiv.innerHTML = `
             <div class="filter-alert-content">
-                <div class="filter-alert-icon">${icon}</div>
+                <div class="filter-alert-icon" style="font-weight: 600; font-size: 0.875rem;">${icon}</div>
                 <div class="filter-alert-text">
                     <div class="filter-alert-title">${title}</div>
                     <div class="filter-alert-subtitle">${subtitle}</div>
