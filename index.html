@@ -118,6 +118,21 @@
                 </div>
             </section>
 
+            <!-- ML Analysis Section -->
+            <section class="card ml-section" id="mlSection" style="display: none;">
+                <div class="card-header">
+                    <h2>🤖 Prediktiv analyse & Clustering</h2>
+                    <button class="btn btn-primary" id="runMLBtn">🚀 Kjør ML-analyse</button>
+                </div>
+                <div class="card-body">
+                    <div id="mlResults" style="display: none;">
+                        <div id="clusterSummary" style="margin-bottom: 2rem;"></div>
+                        <div id="scatterPlotContainer" style="height: 500px; margin-bottom: 2rem;"></div>
+                        <div id="highRiskCompanies"></div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Timeline Section -->
             <section class="card timeline-section" id="timelineSection" style="display: none;">
                 <div class="card-header">
@@ -156,6 +171,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="js/dataProcessor.js"></script>
+    <script src="js/ml.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/export.js"></script>
     <script src="js/app.js"></script>

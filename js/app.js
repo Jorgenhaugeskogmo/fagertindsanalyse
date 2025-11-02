@@ -50,6 +50,11 @@ class App {
         document.getElementById('closeDetailBtn').addEventListener('click', () => {
             document.getElementById('detailSection').style.display = 'none';
         });
+
+        // ML Analysis button
+        document.getElementById('runMLBtn').addEventListener('click', () => {
+            this.runMLAnalysis();
+        });
     }
 
     setupDragDrop() {
@@ -166,6 +171,7 @@ class App {
             // Show sections
             document.getElementById('controlsSection').style.display = 'block';
             document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('mlSection').style.display = 'block';
             document.getElementById('timelineSection').style.display = 'block';
 
             // Scroll to results
@@ -702,6 +708,145 @@ class App {
         if (selectedOption && selectedOption.disabled) {
             yearFilter.value = 'all';
         }
+    }
+
+    runMLAnalysis() {
+        if (!dataProcessor.processedData || !dataProcessor.processedData.addressChanges || dataProcessor.processedData.addressChanges.length === 0) {
+            alert('Ingen data tilgjengelig for ML-analyse. Last inn data først.');
+            return;
+        }
+
+        // Show loading
+        document.getElementById('loadingOverlay').style.display = 'flex';
+
+        setTimeout(() => {
+            try {
+                // Prepare data - use companies that moved 3-8 years ago
+                const data8Years = dataProcessor.getCompaniesByMoveYear(8);
+                const data3Years = dataProcessor.getCompaniesByMoveYear(3);
+                const allMovers = [...data8Years, ...data3Years];
+
+                if (allMovers.length < 3) {
+                    alert('Ikke nok data for ML-analyse. Trenger minst 3 selskaper.');
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    return;
+                }
+
+                // Run clustering
+                const clusters = mlAnalyzer.kMeansClustering(allMovers, 4);
+                
+                // Display cluster summary
+                this.displayClusterSummary(clusters);
+                
+                // Display scatter plot
+                chartManager.createMLScatterPlot(clusters);
+                
+                // Display high-risk companies
+                this.displayHighRiskCompanies();
+                
+                // Show results
+                document.getElementById('mlResults').style.display = 'block';
+                
+                // Scroll to ML section
+                document.getElementById('mlSection').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+
+            } catch (error) {
+                console.error('ML analysis error:', error);
+                alert('Det oppstod en feil under ML-analysen: ' + error.message);
+            } finally {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }, 100);
+    }
+
+    displayClusterSummary(clusters) {
+        const summary = mlAnalyzer.getClusterSummary();
+        const container = document.getElementById('clusterSummary');
+        
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">';
+        
+        summary.forEach(cluster => {
+            html += `
+                <div style="padding: 1.5rem; background: ${cluster.color}15; border-left: 4px solid ${cluster.color}; border-radius: 8px;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: ${cluster.color};">${cluster.label}</h3>
+                    <p style="margin: 0 0 1rem 0; color: #666; font-size: 0.9rem;">${cluster.description}</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.85rem;">
+                        <div><strong>Antall:</strong> ${cluster.size}</div>
+                        <div><strong>Gj.snitt år:</strong> ${cluster.stats.avgYearsSinceMove.toFixed(1)}</div>
+                        <div><strong>Gj.snitt endring:</strong> ${cluster.stats.avgChange.toFixed(0)}</div>
+                        <div><strong>Gj.snitt %:</strong> ${cluster.stats.avgPercentChange.toFixed(1)}%</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    displayHighRiskCompanies() {
+        const highRisk = mlAnalyzer.getHighRiskCompanies(70);
+        const container = document.getElementById('highRiskCompanies');
+        
+        if (highRisk.length === 0) {
+            container.innerHTML = '<p>Ingen høyrisiko selskaper identifisert.</p>';
+            return;
+        }
+
+        let html = `
+            <div style="background: #fee; padding: 1.5rem; border-radius: 8px; border: 2px solid #f44;">
+                <h3 style="margin: 0 0 1rem 0; color: #c33;">
+                    ⚠️ Høyrisiko selskaper (Risikoscore ≥ 70)
+                </h3>
+                <p style="margin: 0 0 1rem 0; color: #666;">
+                    Disse selskapene har høy sannsynlighet for å trenge nye lokaler snart.
+                </p>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f5f5f5; text-align: left;">
+                                <th style="padding: 0.75rem; border-bottom: 2px solid #ddd;">Risiko</th>
+                                <th style="padding: 0.75rem; border-bottom: 2px solid #ddd;">Selskap</th>
+                                <th style="padding: 0.75rem; border-bottom: 2px solid #ddd;">År siden flytting</th>
+                                <th style="padding: 0.75rem; border-bottom: 2px solid #ddd;">Endring</th>
+                                <th style="padding: 0.75rem; border-bottom: 2px solid #ddd;">% Endring</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        highRisk.forEach(company => {
+            const riskColor = company.riskScore >= 85 ? '#c33' : company.riskScore >= 75 ? '#f90' : '#fa0';
+            html += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.75rem;">
+                        <div style="background: ${riskColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; text-align: center; font-weight: bold;">
+                            ${company.riskScore}
+                        </div>
+                    </td>
+                    <td style="padding: 0.75rem; font-weight: 500;">${company.name}</td>
+                    <td style="padding: 0.75rem;">${company.yearsSinceMove || 'N/A'} år</td>
+                    <td style="padding: 0.75rem; color: ${(company.employeeChangeSinceMove || company.employeeChange || 0) > 0 ? '#10b981' : '#ef4444'};">
+                        ${(company.employeeChangeSinceMove || company.employeeChange || 0) > 0 ? '+' : ''}${company.employeeChangeSinceMove || company.employeeChange || 0}
+                    </td>
+                    <td style="padding: 0.75rem; color: ${parseFloat(company.changePercentSinceMove || company.employeeChangePercent || 0) > 0 ? '#10b981' : '#ef4444'};">
+                        ${parseFloat(company.changePercentSinceMove || company.employeeChangePercent || 0) > 0 ? '+' : ''}${company.changePercentSinceMove || company.employeeChangePercent || 0}%
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
     }
 }
 

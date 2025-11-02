@@ -399,6 +399,148 @@ class ChartManager {
             }
         };
     }
+
+    // Create ML scatter plot with clusters
+    createMLScatterPlot(clusters) {
+        const container = document.getElementById('scatterPlotContainer');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'Clustering: År siden flytting vs Ansattendring';
+        heading.style.marginBottom = '1rem';
+        heading.style.fontSize = '1.125rem';
+        heading.style.fontWeight = '600';
+        container.appendChild(heading);
+
+        if (!clusters || clusters.length === 0) {
+            this.renderEmptyState(container, 'Ingen clusters generert.');
+            return;
+        }
+
+        const canvasWrapper = document.createElement('div');
+        canvasWrapper.style.height = '450px';
+        canvasWrapper.style.position = 'relative';
+        
+        const canvas = document.createElement('canvas');
+        canvas.id = 'mlScatterChart';
+        canvasWrapper.appendChild(canvas);
+        container.appendChild(canvasWrapper);
+
+        // Prepare datasets for each cluster
+        const datasets = clusters.map(cluster => {
+            const data = cluster.items.map(item => ({
+                x: item.yearsSinceMove || 0,
+                y: item.employeeChangeSinceMove || item.employeeChange || 0,
+                name: item.name,
+                employees: item.employeesNow || item.employeesAfter || 0
+            }));
+
+            return {
+                label: cluster.label.replace(/[🔴🟡🟢🔵⚪]/g, '').trim(),
+                data: data,
+                backgroundColor: cluster.color + 'CC',
+                borderColor: cluster.color,
+                borderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 10,
+                pointHoverBorderWidth: 3
+            };
+        });
+
+        const ctx = canvas.getContext('2d');
+        this.charts.mlScatterChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            },
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                        padding: 15,
+                        cornerRadius: 8,
+                        titleFont: {
+                            size: 14,
+                            weight: '600'
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].raw.name || 'Ukjent selskap';
+                            },
+                            label: function(context) {
+                                const item = context.raw;
+                                return [
+                                    `År siden flytting: ${item.x}`,
+                                    `Ansattendring: ${item.y > 0 ? '+' : ''}${item.y}`,
+                                    `Nåværende ansatte: ${item.employees}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'År siden flytting',
+                            font: {
+                                size: 13,
+                                weight: '600'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 12
+                            },
+                            stepSize: 1
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Endring i antall ansatte',
+                            font: {
+                                size: 13,
+                                weight: '600'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 // Create global instance
