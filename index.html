@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fremtidsanalyse - Selskapsanalyse</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">📊 Fremtidsanalyse</h1>
+                <p class="tagline">Analyser selskapsdata fra Brønnøysundregistrene</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="card upload-section" id="uploadSection">
+                <div class="card-header">
+                    <h2>📁 Last opp data</h2>
+                    <p class="subtitle">Last opp CSV-filer fra Brønnøysundregistrene for analyse</p>
+                </div>
+                <div class="card-body">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📂</div>
+                        <p class="upload-text">Dra og slipp filer her, eller klikk for å velge</p>
+                        <p class="upload-hint">Støtter CSV-filer fra Brønnøysund (2016-2024)</p>
+                        <input type="file" id="fileInput" multiple accept=".csv" style="display: none;">
+                        <button class="btn btn-primary" id="uploadBtn">Velg filer</button>
+                    </div>
+                    <div class="file-list" id="fileList"></div>
+                    <button class="btn btn-success" id="analyzeBtn" style="display: none;">🚀 Kjør analyse</button>
+                </div>
+            </section>
+
+            <!-- Analysis Controls -->
+            <section class="card controls-section" id="controlsSection" style="display: none;">
+                <div class="card-header">
+                    <h2>⚙️ Analyseinnstillinger</h2>
+                </div>
+                <div class="card-body">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label for="yearFilter">Filtrer etter flytteår</label>
+                            <select id="yearFilter" class="form-select">
+                                <option value="all">Alle år</option>
+                                <option value="8">For 8 år siden (2017)</option>
+                                <option value="3">For 3 år siden (2022)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="changeType">Type endring</label>
+                            <select id="changeType" class="form-select">
+                                <option value="all">Alle</option>
+                                <option value="increase">Kun vekst</option>
+                                <option value="decrease">Kun nedgang</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="topCount">Antall resultater</label>
+                            <select id="topCount" class="form-select">
+                                <option value="10">Topp 10</option>
+                                <option value="25">Topp 25</option>
+                                <option value="50">Topp 50</option>
+                                <option value="all">Alle</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="filterBtn">🔍 Filtrer resultater</button>
+                        <button class="btn btn-secondary" id="resetBtn">🔄 Tilbakestill</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="card results-section" id="resultsSection" style="display: none;">
+                <div class="card-header">
+                    <h2>📈 Analyseresultater</h2>
+                    <div class="button-group">
+                        <button class="btn btn-outline" id="exportCsvBtn">⬇️ Eksporter CSV</button>
+                        <button class="btn btn-outline" id="exportPdfBtn">⬇️ Eksporter PDF</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid" id="statsGrid"></div>
+                    <div class="chart-container" id="chartContainer"></div>
+                    <div class="table-container">
+                        <table class="data-table" id="resultsTable">
+                            <thead>
+                                <tr>
+                                    <th>Organisasjonsnummer</th>
+                                    <th>Navn</th>
+                                    <th>Flytteår</th>
+                                    <th>Gammel adresse</th>
+                                    <th>Ny adresse</th>
+                                    <th>Ansatte før</th>
+                                    <th>Ansatte nå</th>
+                                    <th>Endring</th>
+                                    <th>% Endring</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Timeline Section -->
+            <section class="card timeline-section" id="timelineSection" style="display: none;">
+                <div class="card-header">
+                    <h2>📅 Tidslinje over adresseendringer</h2>
+                </div>
+                <div class="card-body">
+                    <div id="timelineContainer"></div>
+                </div>
+            </section>
+
+            <!-- Company Detail Section -->
+            <section class="card detail-section" id="detailSection" style="display: none;">
+                <div class="card-header">
+                    <h2>🏢 Selskapsdetaljer</h2>
+                    <button class="btn btn-secondary" id="closeDetailBtn">✕ Lukk</button>
+                </div>
+                <div class="card-body">
+                    <div id="companyDetails"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>Fremtidsanalyse © 2025 | Data fra Brønnøysundregistrene</p>
+        </footer>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Analyserer data...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/dataProcessor.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
+
