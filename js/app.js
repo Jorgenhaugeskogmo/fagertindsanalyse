@@ -514,20 +514,24 @@ class App {
         const topCount = document.getElementById('topCount').value;
 
         let filteredData;
+        let filterType = 'all';
 
         if (yearFilter === 'all') {
             filteredData = dataProcessor.processedData.addressChanges;
         } else {
             const yearsAgo = parseInt(yearFilter);
             filteredData = dataProcessor.getTopMoversByYear(yearsAgo, 'all', changeType);
+            filterType = yearsAgo === 8 ? '8years' : yearsAgo === 3 ? '3years' : 'all';
         }
 
         // Apply change type filter if not already filtered by year
         if (yearFilter === 'all') {
             if (changeType === 'increase') {
                 filteredData = filteredData.filter(c => c.employeeChange > 0);
+                filterType = 'growth';
             } else if (changeType === 'decrease') {
                 filteredData = filteredData.filter(c => c.employeeChange < 0);
+                filterType = 'decline';
             }
         }
 
@@ -537,13 +541,23 @@ class App {
         );
 
         // Apply count limit
+        const fullCount = filteredData.length;
         if (topCount !== 'all') {
             filteredData = filteredData.slice(0, parseInt(topCount));
         }
 
+        // Show filter alert
+        this.showFilterAlert(filterType, fullCount);
+
         // Update display
         this.updateTable(filteredData);
         exportManager.setData(filteredData, dataProcessor.getStatistics());
+        
+        // Scroll to results
+        document.getElementById('resultsSection').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
     }
 
     resetFilters() {

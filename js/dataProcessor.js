@@ -100,13 +100,53 @@ class DataProcessor {
         return this.processedData;
     }
 
-    // Read file as text
+    // Read file as text with proper encoding detection
     readFile(file) {
         return new Promise((resolve, reject) => {
+            // First try to detect encoding by reading as binary
             const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
+            reader.onload = (e) => {
+                const arr = new Uint8Array(e.target.result);
+                const firstBytes = arr.slice(0, Math.min(1000, arr.length));
+                
+                // Check for BOM (Byte Order Mark)
+                let encoding = 'UTF-8';
+                if (firstBytes[0] === 0xEF && firstBytes[1] === 0xBB && firstBytes[2] === 0xBF) {
+                    encoding = 'UTF-8'; // UTF-8 BOM
+                } else {
+                    // Try to detect by checking for typical Norwegian characters
+                    // If we see bytes in the Windows-1252 range for æøå, use that
+                    for (let i = 0; i < firstBytes.length; i++) {
+                        const byte = firstBytes[i];
+                        // Check for Windows-1252 encoded æøå (0xE6, 0xF8, 0xE5, 0xC6, 0xD8, 0xC5)
+                        if (byte === 0xE6 || byte === 0xF8 || byte === 0xE5 || 
+                            byte === 0xC6 || byte === 0xD8 || byte === 0xC5) {
+                            encoding = 'Windows-1252';
+                            break;
+                        }
+                    }
+                }
+                
+                // Now read with detected encoding
+                const textReader = new FileReader();
+                textReader.onload = (e2) => {
+                    let text = e2.target.result;
+                    
+                    // If still contains replacement characters, try Windows-1252
+                    if (text.includes('�') && encoding === 'UTF-8') {
+                        const fallbackReader = new FileReader();
+                        fallbackReader.onload = (e3) => resolve(e3.target.result);
+                        fallbackReader.onerror = (e3) => reject(e3);
+                        fallbackReader.readAsText(file, 'Windows-1252');
+                    } else {
+                        resolve(text);
+                    }
+                };
+                textReader.onerror = (e2) => reject(e2);
+                textReader.readAsText(file, encoding);
+            };
             reader.onerror = (e) => reject(e);
-            reader.readAsText(file, 'UTF-8');
+            reader.readAsArrayBuffer(file);
         });
     }
 
