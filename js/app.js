@@ -390,6 +390,73 @@ class App {
         }, 100);
     }
 
+    showFilterAlert(filterType, count) {
+        const alertDiv = document.getElementById('activeFilterAlert');
+        let icon, title, subtitle, alertClass;
+        
+        switch(filterType) {
+            case 'all':
+                icon = '📊';
+                title = 'Alle selskaper';
+                subtitle = `Viser ${count} selskaper med adresseendringer`;
+                alertClass = '';
+                break;
+            case 'moves':
+                icon = '📍';
+                title = 'Alle adresseendringer';
+                subtitle = `Viser ${count} adresseendringer`;
+                alertClass = '';
+                break;
+            case 'growth':
+                icon = '📈';
+                title = 'Selskaper med vekst';
+                subtitle = `Viser ${count} selskaper som har økt antall ansatte`;
+                alertClass = 'success';
+                break;
+            case 'decline':
+                icon = '📉';
+                title = 'Selskaper med nedgang';
+                subtitle = `Viser ${count} selskaper som har redusert antall ansatte`;
+                alertClass = 'danger';
+                break;
+            case '8years':
+                const year8 = new Date().getFullYear() - 8;
+                icon = '🏢';
+                title = `Selskaper som flyttet i ${year8}`;
+                subtitle = `Viser ${count} selskaper som endret adresse for 8 år siden`;
+                alertClass = '';
+                break;
+            case '3years':
+                const year3 = new Date().getFullYear() - 3;
+                icon = '🏢';
+                title = `Selskaper som flyttet i ${year3}`;
+                subtitle = `Viser ${count} selskaper som endret adresse for 3 år siden`;
+                alertClass = '';
+                break;
+            default:
+                alertDiv.style.display = 'none';
+                return;
+        }
+        
+        alertDiv.className = 'filter-alert ' + alertClass;
+        alertDiv.style.display = 'flex';
+        alertDiv.innerHTML = `
+            <div class="filter-alert-content">
+                <div class="filter-alert-icon">${icon}</div>
+                <div class="filter-alert-text">
+                    <div class="filter-alert-title">${title}</div>
+                    <div class="filter-alert-subtitle">${subtitle}</div>
+                </div>
+            </div>
+            <button class="filter-alert-close" onclick="window.appInstance.clearFilter()" title="Tilbakestill filter">✕</button>
+        `;
+    }
+
+    clearFilter() {
+        document.getElementById('activeFilterAlert').style.display = 'none';
+        this.resetFilters();
+    }
+
     quickFilter(filter) {
         let filteredData;
         const stats = dataProcessor.getStatistics();
@@ -433,6 +500,9 @@ class App {
         filteredData.sort((a, b) => 
             Math.abs(b.employeeChange) - Math.abs(a.employeeChange)
         );
+        
+        // Show filter alert
+        this.showFilterAlert(filter, filteredData.length);
         
         this.updateTable(filteredData);
         exportManager.setData(filteredData, stats);
@@ -480,6 +550,7 @@ class App {
         document.getElementById('yearFilter').value = 'all';
         document.getElementById('changeType').value = 'all';
         document.getElementById('topCount').value = '10';
+        document.getElementById('activeFilterAlert').style.display = 'none';
         this.displayResults(dataProcessor.processedData.addressChanges);
     }
 
