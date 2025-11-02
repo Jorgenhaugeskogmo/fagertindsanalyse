@@ -104,6 +104,52 @@
                         </p>
                     </div>
                     
+                    <!-- ML Analysis Section -->
+                    <div class="card ml-section" id="mlSection" style="display: none; margin-bottom: 2rem;">
+                        <div class="card-header" style="padding: 1.5rem 2rem 0 2rem; border: none; background: transparent;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                                <h2 style="margin: 0;">Prediktiv analyse & Clustering</h2>
+                                <div class="button-group">
+                                    <button class="btn btn-primary" id="runMLBtn">Kjør ML-analyse</button>
+                                    <button class="btn btn-outline" id="exportMlPdfBtn" disabled>⬇️ Eksporter ML-rapport</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body" style="padding-top: 1rem;">
+                            <div id="mlResults" style="display: none;">
+                                <!-- Risk Score Control -->
+                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 12px; margin-bottom: 2rem; color: white;">
+                                    <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem;">Juster risikoscore-terskel</h3>
+                                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: center;">
+                                        <div>
+                                            <input type="range" id="riskThresholdSlider" min="50" max="90" value="70" step="5" 
+                                                   style="width: 100%; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.3); cursor: pointer;">
+                                            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.9;">
+                                                <span>Lav (50)</span>
+                                                <span>Medium (70)</span>
+                                                <span>Høy (90)</span>
+                                            </div>
+                                        </div>
+                                        <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem 2rem; border-radius: 8px; backdrop-filter: blur(10px);">
+                                            <div style="font-size: 2rem; font-weight: bold;" id="riskThresholdValue">70</div>
+                                            <div style="font-size: 0.875rem; opacity: 0.9;">Risikoscore</div>
+                                            <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8;" id="riskCompanyCount">0 selskaper</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Cluster Overview Stats -->
+                                <div id="clusterOverview" style="margin-bottom: 2rem;"></div>
+                                
+                                <div id="clusterSummary" style="margin-bottom: 2rem;"></div>
+                                <div id="mlInsights" style="margin-bottom: 2rem;"></div>
+                                <div id="mlActionCenter" style="margin-bottom: 2rem;"></div>
+                                <div id="scatterPlotContainer" style="height: 500px; margin-bottom: 2rem;"></div>
+                                <div id="highRiskCompanies"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="chart-container" id="chartContainer"></div>
                     <div class="table-container">
                         <table class="data-table" id="resultsTable">
@@ -128,51 +174,6 @@
                     </div>
                 </div>
             </section>
-
-            <!-- ML Analysis Section -->
-            <section class="card ml-section" id="mlSection" style="display: none;">
-                <div class="card-header">
-                    <h2>Prediktiv analyse & Clustering</h2>
-                    <div class="button-group">
-                        <button class="btn btn-primary" id="runMLBtn">Kjør ML-analyse</button>
-                        <button class="btn btn-outline" id="exportMlPdfBtn" disabled>⬇️ Eksporter ML-rapport</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="mlResults" style="display: none;">
-                        <!-- Risk Score Control -->
-                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 12px; margin-bottom: 2rem; color: white;">
-                            <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem;">Juster risikoscore-terskel</h3>
-                            <div style="display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: center;">
-                                <div>
-                                    <input type="range" id="riskThresholdSlider" min="50" max="90" value="70" step="5" 
-                                           style="width: 100%; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.3); cursor: pointer;">
-                                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.9;">
-                                        <span>Lav (50)</span>
-                                        <span>Medium (70)</span>
-                                        <span>Høy (90)</span>
-                                    </div>
-                                </div>
-                                <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 1rem 2rem; border-radius: 8px; backdrop-filter: blur(10px);">
-                                    <div style="font-size: 2rem; font-weight: bold;" id="riskThresholdValue">70</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Risikoscore</div>
-                                    <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8;" id="riskCompanyCount">0 selskaper</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cluster Overview Stats -->
-                        <div id="clusterOverview" style="margin-bottom: 2rem;"></div>
-                        
-                        <div id="clusterSummary" style="margin-bottom: 2rem;"></div>
-                        <div id="mlInsights" style="margin-bottom: 2rem;"></div>
-                        <div id="mlActionCenter" style="margin-bottom: 2rem;"></div>
-                        <div id="scatterPlotContainer" style="height: 500px; margin-bottom: 2rem;"></div>
-                        <div id="highRiskCompanies"></div>
-                    </div>
-                </div>
-            </section>
-
             <!-- Timeline Section -->
             <section class="card timeline-section" id="timelineSection" style="display: none;">
                 <div class="card-header">
