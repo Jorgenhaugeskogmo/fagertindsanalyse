@@ -384,6 +384,13 @@ class DataProcessor {
         const movers3Years = this.getCompaniesByMoveYear(3);
         const targetYear8 = this.getTargetYear(8);
         const targetYear3 = this.getTargetYear(3);
+        
+        // Count extreme changes (>200% or <-50% or large absolute changes >100)
+        const extremeChanges = this.processedData.addressChanges.filter(change => {
+            const changePercent = parseFloat(change.employeeChangePercent);
+            return (!isNaN(changePercent) && (changePercent > 200 || changePercent < -50)) ||
+                   (Math.abs(change.employeeChange) > 100 && change.employeesBefore > 0);
+        });
 
         return {
             totalCompanies: this.processedData.totalCompanies,
@@ -394,6 +401,7 @@ class DataProcessor {
             totalEmployeeDecrease: totalDecrease,
             movers8YearsAgo: movers8Years.length,
             movers3YearsAgo: movers3Years.length,
+            extremeChanges: extremeChanges.length,
             latestYear: this.processedData.latestYear || null,
             earliestYear: this.processedData.earliestYear || null,
             targetYear8YearsAgo: Number.isFinite(targetYear8) ? targetYear8 : null,

@@ -210,6 +210,10 @@ class App {
                 <div class="stat-value">${stats.companiesWithReduction}</div>
                 <div class="stat-label">Selskaper med nedgang</div>
             </div>
+            <div class="stat-card" data-filter="extreme" onclick="window.appInstance.handleStatCardClick('extreme')" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" title="Klikk for å vise selskaper med ekstreme endringer">
+                <div class="stat-value">${stats.extremeChanges || 0}</div>
+                <div class="stat-label">⚠️ Ekstreme endringer</div>
+            </div>
             <div class="stat-card info" data-filter="8years" onclick="window.appInstance.handleStatCardClick('8years')" title="Klikk for å vise selskaper som flyttet for 8 år siden">
                 <div class="stat-value">${stats.movers8YearsAgo}</div>
                 <div class="stat-label">${movers8Label}</div>
@@ -263,10 +267,19 @@ class App {
             const changeClass = item.employeeChange > 0 ? 'change-positive' : 
                                item.employeeChange < 0 ? 'change-negative' : '';
             
+            // Check for extreme changes (>200% or <-50% or large absolute changes)
+            const changePercent = parseFloat(item.employeeChangePercent);
+            const isExtremeChange = (
+                (!isNaN(changePercent) && (changePercent > 200 || changePercent < -50)) ||
+                (Math.abs(item.employeeChange) > 100 && item.employeesBefore > 0)
+            );
+            
+            const warningIcon = isExtremeChange ? '<span class="warning-icon" title="Ekstrem endring - vurder datakvalitet">⚠️</span> ' : '';
+            
             return `
-                <tr data-orgnr="${item.orgnr}">
+                <tr data-orgnr="${item.orgnr}" class="${isExtremeChange ? 'extreme-change-row' : ''}">
                     <td>${item.orgnr}</td>
-                    <td>${item.name}</td>
+                    <td>${warningIcon}${item.name}</td>
                     <td>${item.year}</td>
                     <td>${item.oldAddress} ${item.oldPostnr ? item.oldPostnr : ''} ${item.oldPoststed ? item.oldPoststed : ''}</td>
                     <td>${item.newAddress} ${item.newPostnr ? item.newPostnr : ''} ${item.newPoststed ? item.newPoststed : ''}</td>
@@ -463,6 +476,13 @@ class App {
                 subtitle = `Viser ${count} selskaper som har redusert antall ansatte`;
                 alertClass = 'danger';
                 break;
+            case 'extreme':
+                icon = '⚠️';
+                title = 'Selskaper med ekstreme endringer';
+                subtitle = `Viser ${count} selskaper med usannsynlig store endringer (>200% vekst, <-50% nedgang, eller >±100 ansatte). Vurder datakvalitet.`;
+                alertClass = '';
+                alertDiv.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                break;
             case '8years':
                 const year8 = new Date().getFullYear() - 8;
                 icon = '🏢';
@@ -525,6 +545,15 @@ class App {
                 filteredData = dataProcessor.processedData.addressChanges.filter(c => c.employeeChange < 0);
                 document.getElementById('changeType').value = 'decrease';
                 document.getElementById('yearFilter').value = 'all';
+                break;
+            case 'extreme':
+                filteredData = dataProcessor.processedData.addressChanges.filter(change => {
+                    const changePercent = parseFloat(change.employeeChangePercent);
+                    return (!isNaN(changePercent) && (changePercent > 200 || changePercent < -50)) ||
+                           (Math.abs(change.employeeChange) > 100 && change.employeesBefore > 0);
+                });
+                document.getElementById('yearFilter').value = 'all';
+                document.getElementById('changeType').value = 'all';
                 break;
             case '8years':
                 filteredData = dataProcessor.getCompaniesByMoveYear(8);

@@ -517,6 +517,21 @@ body {
     font-weight: 600;
 }
 
+/* Warning indicators */
+.warning-icon {
+    font-size: 1.125rem;
+    margin-right: 0.25rem;
+    cursor: help;
+}
+
+.extreme-change-row {
+    background: #fef3c7 !important;
+}
+
+.extreme-change-row:hover {
+    background: #fde68a !important;
+}
+
 /* Timeline */
 .timeline-item {
     padding: 1.5rem;
