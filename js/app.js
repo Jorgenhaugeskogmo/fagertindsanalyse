@@ -321,14 +321,58 @@ class App {
             const companies = changesByYear[year];
             const item = document.createElement('div');
             item.className = 'timeline-item';
+            item.style.cursor = 'pointer';
+            item.title = 'Klikk for å se selskaper som flyttet dette året';
             item.innerHTML = `
                 <div class="timeline-year">${year}</div>
                 <div class="timeline-companies">${companies.length} selskaper flyttet</div>
             `;
+            
+            // Add click handler to show companies for this year
+            item.addEventListener('click', () => {
+                this.showCompaniesByYear(year, companies);
+            });
+            
             breakdown.appendChild(item);
         });
 
         timelineContainer.appendChild(breakdown);
+    }
+
+    showCompaniesByYear(year, companies) {
+        // Sort by absolute employee change
+        const sortedCompanies = [...companies].sort((a, b) => 
+            Math.abs(b.employeeChange) - Math.abs(a.employeeChange)
+        );
+        
+        // Show filter alert
+        this.showFilterAlert('year_' + year, sortedCompanies.length);
+        
+        // Update the filter alert with year-specific info
+        const alertDiv = document.getElementById('activeFilterAlert');
+        alertDiv.className = 'filter-alert';
+        alertDiv.innerHTML = `
+            <div class="filter-alert-content">
+                <div class="filter-alert-icon">📅</div>
+                <div class="filter-alert-text">
+                    <div class="filter-alert-title">Selskaper som flyttet i ${year}</div>
+                    <div class="filter-alert-subtitle">Viser ${sortedCompanies.length} selskaper som endret adresse dette året</div>
+                </div>
+            </div>
+            <button class="filter-alert-close" onclick="window.appInstance.clearFilter()" title="Tilbakestill filter">✕</button>
+        `;
+        
+        // Update table with filtered companies
+        this.updateTable(sortedCompanies);
+        exportManager.setData(sortedCompanies, dataProcessor.getStatistics());
+        
+        // Scroll to results
+        setTimeout(() => {
+            document.getElementById('resultsSection').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }, 100);
     }
 
     showCompanyDetails(orgnr) {

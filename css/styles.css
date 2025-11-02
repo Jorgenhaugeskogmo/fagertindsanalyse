@@ -525,11 +525,19 @@ body {
     background: var(--background);
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
     transition: all 0.2s;
+    cursor: pointer;
+    user-select: none;
 }
 
 .timeline-item:hover {
-    background: #e2e8f0;
-    transform: translateX(5px);
+    background: #dbeafe;
+    transform: translateX(8px);
+    border-left-color: var(--primary-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.timeline-item:active {
+    transform: translateX(4px);
 }
 
 .timeline-year {
