@@ -51,14 +51,14 @@ class MLAnalyzer {
         }
 
         // Create clusters with statistics
-        const clusters = [];
+        const clusterMap = new Map();
         for (let i = 0; i < k; i++) {
             const clusterItems = features
                 .map((f, idx) => ({ ...f.item, clusterId: assignments[idx] }))
                 .filter((_, idx) => assignments[idx] === i);
             
             if (clusterItems.length > 0) {
-                clusters.push({
+                clusterMap.set(i, {
                     id: i,
                     items: clusterItems,
                     size: clusterItems.length,
@@ -68,9 +68,28 @@ class MLAnalyzer {
             }
         }
 
-        this.clusters = clusters;
+        this.clusters = Array.from(clusterMap.values());
         this.assignClusterLabels();
-        return clusters;
+        
+        // Merge duplicate clusters with same labels
+        const mergedClusters = [];
+        const labelMap = new Map();
+        
+        this.clusters.forEach(cluster => {
+            if (labelMap.has(cluster.label)) {
+                // Merge with existing cluster
+                const existing = labelMap.get(cluster.label);
+                existing.items.push(...cluster.items);
+                existing.size = existing.items.length;
+                existing.stats = this.calculateClusterStats(existing.items);
+            } else {
+                labelMap.set(cluster.label, cluster);
+                mergedClusters.push(cluster);
+            }
+        });
+        
+        this.clusters = mergedClusters;
+        return mergedClusters;
     }
 
     // Initialize centroids using k-means++
@@ -178,27 +197,27 @@ class MLAnalyzer {
             
             // Determine cluster profile
             if (stats.avgYearsSinceMove >= 7 && Math.abs(stats.avgPercentChange) > 30) {
-                cluster.label = '🔴 Høy risiko - Utgående leieavtale';
+                cluster.label = 'Høy risiko - Utgående leieavtale';
                 cluster.description = 'Flyttet for lenge siden med stor endring i ansatte';
                 cluster.color = '#ef4444';
                 cluster.risk = 'high';
             } else if (stats.avgYearsSinceMove >= 5 && Math.abs(stats.avgPercentChange) > 15) {
-                cluster.label = '🟡 Medium risiko - Potensielt behov';
+                cluster.label = 'Medium risiko - Potensielt behov';
                 cluster.description = 'Moderat tid siden flytting med signifikant endring';
                 cluster.color = '#f59e0b';
                 cluster.risk = 'medium';
             } else if (stats.avgPercentChange > 50) {
-                cluster.label = '🟢 Høy vekst - Ekspansjon';
+                cluster.label = 'Høy vekst - Ekspansjon';
                 cluster.description = 'Sterk vekst, kan trenge større lokaler snart';
                 cluster.color = '#10b981';
                 cluster.risk = 'growth';
             } else if (stats.avgPercentChange < -30) {
-                cluster.label = '🔵 Nedgang - Nedskalering';
+                cluster.label = 'Nedgang - Nedskalering';
                 cluster.description = 'Reduksjon i ansatte, kan trenge mindre lokaler';
                 cluster.color = '#3b82f6';
                 cluster.risk = 'decline';
             } else {
-                cluster.label = '⚪ Stabil - Lav risiko';
+                cluster.label = 'Stabil - Lav risiko';
                 cluster.description = 'Stabile forhold, lite sannsynlig endring';
                 cluster.color = '#6b7280';
                 cluster.risk = 'low';

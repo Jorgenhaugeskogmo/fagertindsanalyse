@@ -322,7 +322,7 @@ class App {
                 (Math.abs(changeValue) > 100)
             );
             
-            const warningIcon = isExtremeChange ? '<span class="warning-icon" title="Ekstrem endring - vurder datakvalitet">⚠️</span> ' : '';
+            const warningIcon = isExtremeChange ? '<span class="warning-icon" title="Ekstrem endring - vurder datakvalitet">!</span> ' : '';
             
             // Determine what to show in the "employees" columns
             let empBefore, empAfter;
@@ -434,7 +434,7 @@ class App {
         alertDiv.className = 'filter-alert';
         alertDiv.innerHTML = `
             <div class="filter-alert-content">
-                <div class="filter-alert-icon">📅</div>
+                <div class="filter-alert-icon" style="font-weight: 600; font-size: 0.875rem;">${year}</div>
                 <div class="filter-alert-text">
                     <div class="filter-alert-title">Selskaper som flyttet i ${year}</div>
                     <div class="filter-alert-subtitle">Viser ${sortedCompanies.length} selskaper som endret adresse dette året</div>
@@ -817,7 +817,7 @@ class App {
                     </div>
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid ${cluster.color}40; 
                                 text-align: center; font-size: 0.85rem; color: ${cluster.color}; font-weight: 600;">
-                        👉 Klikk for å se selskapene
+                        Klikk for å se selskapene
                     </div>
                 </div>
             `;
@@ -850,7 +850,7 @@ class App {
         alertDiv.style.borderLeft = `4px solid ${cluster.color}`;
         alertDiv.innerHTML = `
             <div class="filter-alert-content">
-                <div class="filter-alert-icon" style="background: ${cluster.color}20; color: ${cluster.color};">🤖</div>
+                <div class="filter-alert-icon" style="background: ${cluster.color}20; color: ${cluster.color};">ML</div>
                 <div class="filter-alert-text">
                     <div class="filter-alert-title" style="color: ${cluster.color};">${cluster.label}</div>
                     <div class="filter-alert-subtitle">${cluster.description} - Viser ${sortedCompanies.length} selskaper</div>
@@ -885,7 +885,7 @@ class App {
         let html = `
             <div style="background: #fee; padding: 1.5rem; border-radius: 8px; border: 2px solid #f44;">
                 <h3 style="margin: 0 0 1rem 0; color: #c33;">
-                    ⚠️ Høyrisiko selskaper (Risikoscore ≥ 70)
+                    Høyrisiko selskaper (Risikoscore ≥ 70)
                 </h3>
                 <p style="margin: 0 0 1rem 0; color: #666;">
                     Disse selskapene har høy sannsynlighet for å trenge nye lokaler snart.
