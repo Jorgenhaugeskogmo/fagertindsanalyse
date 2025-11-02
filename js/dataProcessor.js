@@ -324,7 +324,8 @@ class DataProcessor {
     // Get the absolute year for a relative move filter
     getTargetYear(yearsAgo) {
         if (!Number.isFinite(yearsAgo)) return null;
-        const baseYear = this.processedData.latestYear ?? this.currentYear;
+        // Always use current year (today) as reference, not latest data year
+        const baseYear = this.currentYear;
         if (!Number.isFinite(baseYear)) return null;
         return baseYear - yearsAgo;
     }
