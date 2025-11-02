@@ -24,6 +24,11 @@
     --radius-md: 0.5rem;
     --radius-lg: 0.75rem;
     --radius-xl: 1rem;
+    --header-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --table-header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --table-header-text: #ffffff;
+    --table-header-border: rgba(226, 232, 240, 0.6);
+    --table-row-hover: rgba(59, 130, 246, 0.05);
 }
 
 body {
@@ -33,6 +38,28 @@ body {
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+body.dark-mode {
+    --primary-color: #60a5fa;
+    --primary-hover: #3b82f6;
+    --secondary-color: #94a3b8;
+    --success-color: #34d399;
+    --danger-color: #f87171;
+    --background: #0f172a;
+    --surface: #152238;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5f5;
+    --border-color: rgba(148, 163, 184, 0.35);
+    --header-gradient: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%);
+    --table-header-bg: linear-gradient(135deg, #1d4ed8 0%, #4338ca 100%);
+    --table-header-text: #e2e8f0;
+    --table-header-border: rgba(148, 163, 184, 0.5);
+    --table-row-hover: rgba(59, 130, 246, 0.12);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 12px 20px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 18px 28px rgba(0, 0, 0, 0.55);
 }
 
 .container {
@@ -52,6 +79,17 @@ body {
 .header-content {
     max-width: 1200px;
     margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .logo {
@@ -88,6 +126,10 @@ body {
 
 .card:hover {
     box-shadow: var(--shadow-lg);
+}
+
+body.dark-mode .card {
+    border: 1px solid var(--border-color);
 }
 
 .card-header {
@@ -129,7 +171,18 @@ body {
 .upload-area:hover,
 .upload-area.drag-over {
     border-color: var(--primary-color);
-    background: rgba(59, 130, 246, 0.05);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+body.dark-mode .upload-area {
+    background: rgba(148, 163, 184, 0.08);
+    border-color: rgba(148, 163, 184, 0.35);
+}
+
+body.dark-mode .upload-area:hover,
+body.dark-mode .upload-area.drag-over {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: var(--primary-color);
 }
 
 .upload-icon {
@@ -274,6 +327,12 @@ body {
     margin-top: 1.5rem;
 }
 
+.theme-toggle {
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+}
+
 /* Controls */
 .controls-grid {
     display: grid;
@@ -301,7 +360,7 @@ body {
     padding: 1.25rem;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    background: #fff;
+    background: var(--surface);
     box-shadow: var(--shadow-sm);
 }
 
@@ -318,6 +377,8 @@ body {
     border: 1.5px solid var(--border-color);
     border-radius: var(--radius-md);
     font-size: 0.95rem;
+    background: var(--surface);
+    color: var(--text-primary);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -330,7 +391,7 @@ body {
 .company-search-hint {
     margin: 0;
     font-size: 0.85rem;
-    color: #64748b;
+    color: var(--text-secondary);
 }
 
 .form-select {
@@ -516,15 +577,15 @@ body {
 }
 
 .data-table thead {
-    background: var(--background);
+    background: var(--table-header-bg);
 }
 
 .data-table th {
     padding: 1rem;
     text-align: left;
     font-weight: 600;
-    color: var(--text-primary);
-    border-bottom: 2px solid var(--border-color);
+    color: var(--table-header-text);
+    border-bottom: 2px solid var(--table-header-border);
     white-space: nowrap;
 }
 
@@ -535,8 +596,8 @@ body {
 }
 
 .data-table th.sortable:hover {
-    background: var(--background);
-    color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--table-header-text);
 }
 
 .data-table th.sortable .sort-indicator {
@@ -567,7 +628,7 @@ body {
 }
 
 .data-table tbody tr:hover {
-    background: var(--background);
+    background: var(--table-row-hover);
 }
 
 .data-table tbody tr:last-child td {
@@ -599,6 +660,14 @@ body {
     background: #fde68a !important;
 }
 
+body.dark-mode .extreme-change-row {
+    background: rgba(251, 191, 36, 0.2) !important;
+}
+
+body.dark-mode .extreme-change-row:hover {
+    background: rgba(251, 191, 36, 0.3) !important;
+}
+
 /* Timeline */
 .timeline-item {
     padding: 1.5rem;
@@ -612,7 +681,7 @@ body {
 }
 
 .timeline-item:hover {
-    background: #dbeafe;
+    background: var(--table-row-hover);
     transform: translateX(8px);
     border-left-color: var(--primary-hover);
     box-shadow: var(--shadow-md);

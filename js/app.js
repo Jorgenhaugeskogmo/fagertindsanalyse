@@ -9,12 +9,35 @@ class App {
         this.currentRiskThreshold = 70;
         this.allMLCompanies = null;
         this.mlReportData = null;
+        this.initTheme();
         this.init();
     }
 
     init() {
         this.setupEventListeners();
         this.setupDragDrop();
+    }
+
+    initTheme() {
+        const saved = localStorage.getItem('fagertind-theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (!saved && prefersDark)) {
+            document.body.classList.add('dark-mode');
+        }
+        this.updateThemeToggle();
+    }
+
+    toggleTheme() {
+        const isDark = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('fagertind-theme', isDark ? 'dark' : 'light');
+        this.updateThemeToggle();
+    }
+
+    updateThemeToggle() {
+        const btn = document.getElementById('themeToggleBtn');
+        if (!btn) return;
+        const isDark = document.body.classList.contains('dark-mode');
+        btn.textContent = isDark ? '☀️ Lysmodus' : '🌙 Mørkmodus';
     }
 
     setupEventListeners() {
@@ -89,6 +112,13 @@ class App {
             exportMlBtn.disabled = true;
             exportMlBtn.addEventListener('click', () => {
                 exportManager.exportMLReportPDF();
+            });
+        }
+
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', () => {
+                this.toggleTheme();
             });
         }
 
