@@ -194,44 +194,31 @@ class App {
             : 'Flyttet for 3 år siden';
         
         statsGrid.innerHTML = `
-            <div class="stat-card info" data-filter="all" style="cursor: pointer;" title="Klikk for å vise alle selskaper">
+            <div class="stat-card info" data-filter="all" onclick="window.appInstance.handleStatCardClick('all')" title="Klikk for å vise alle selskaper">
                 <div class="stat-value">${stats.totalCompanies}</div>
                 <div class="stat-label">Totalt selskaper</div>
             </div>
-            <div class="stat-card" data-filter="moves" style="cursor: pointer;" title="Klikk for å vise alle adresseendringer">
+            <div class="stat-card" data-filter="moves" onclick="window.appInstance.handleStatCardClick('moves')" title="Klikk for å vise alle adresseendringer">
                 <div class="stat-value">${stats.totalAddressChanges}</div>
                 <div class="stat-label">Adresseendringer</div>
             </div>
-            <div class="stat-card success" data-filter="growth" style="cursor: pointer;" title="Klikk for å vise selskaper med vekst">
+            <div class="stat-card success" data-filter="growth" onclick="window.appInstance.handleStatCardClick('growth')" title="Klikk for å vise selskaper med vekst">
                 <div class="stat-value">${stats.companiesWithGrowth}</div>
                 <div class="stat-label">Selskaper med vekst</div>
             </div>
-            <div class="stat-card danger" data-filter="decline" style="cursor: pointer;" title="Klikk for å vise selskaper med nedgang">
+            <div class="stat-card danger" data-filter="decline" onclick="window.appInstance.handleStatCardClick('decline')" title="Klikk for å vise selskaper med nedgang">
                 <div class="stat-value">${stats.companiesWithReduction}</div>
                 <div class="stat-label">Selskaper med nedgang</div>
             </div>
-            <div class="stat-card info" data-filter="8years" style="cursor: pointer;" title="Klikk for å vise selskaper som flyttet for 8 år siden">
+            <div class="stat-card info" data-filter="8years" onclick="window.appInstance.handleStatCardClick('8years')" title="Klikk for å vise selskaper som flyttet for 8 år siden">
                 <div class="stat-value">${stats.movers8YearsAgo}</div>
                 <div class="stat-label">${movers8Label}</div>
             </div>
-            <div class="stat-card info" data-filter="3years" style="cursor: pointer;" title="Klikk for å vise selskaper som flyttet for 3 år siden">
+            <div class="stat-card info" data-filter="3years" onclick="window.appInstance.handleStatCardClick('3years')" title="Klikk for å vise selskaper som flyttet for 3 år siden">
                 <div class="stat-value">${stats.movers3YearsAgo}</div>
                 <div class="stat-label">${movers3Label}</div>
             </div>
         `;
-        
-        // Add click handlers to stat cards
-        statsGrid.querySelectorAll('.stat-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const filter = card.dataset.filter;
-                this.quickFilter(filter);
-                // Scroll to results
-                document.getElementById('resultsSection').scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                });
-            });
-        });
     }
 
     displayResults(data) {
@@ -392,6 +379,17 @@ class App {
         detailSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    handleStatCardClick(filter) {
+        this.quickFilter(filter);
+        // Scroll to results
+        setTimeout(() => {
+            document.getElementById('resultsSection').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }, 100);
+    }
+
     quickFilter(filter) {
         let filteredData;
         const stats = dataProcessor.getStatistics();
@@ -514,5 +512,5 @@ class App {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new App();
+    window.appInstance = new App();
 });

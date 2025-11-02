@@ -325,10 +325,17 @@ body {
     border-radius: var(--radius-lg);
     color: white;
     box-shadow: var(--shadow-md);
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    user-select: none;
 }
 
 .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+.stat-card:active {
     transform: translateY(-2px);
 }
 
