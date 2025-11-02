@@ -259,8 +259,11 @@ class App {
         const tableContainer = document.querySelector('.table-container');
         const tableNote = document.getElementById('tableNote');
         
+        // Check if we're showing cluster data (with risk scores)
+        const showRiskScore = data.length > 0 && data[0].riskScore !== undefined;
+        
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #64748b;">Ingen resultater funnet</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${showRiskScore ? 10 : 9}" style="text-align: center; padding: 2rem; color: #64748b;">Ingen resultater funnet</td></tr>`;
             // Remove show more button if exists
             const showMoreBtn = tableContainer.querySelector('.show-more-btn');
             if (showMoreBtn) showMoreBtn.remove();
@@ -277,6 +280,22 @@ class App {
         // Show/hide note
         if (tableNote) {
             tableNote.style.display = showSinceMove ? 'block' : 'none';
+        }
+        
+        // Update table header if needed
+        const thead = document.querySelector('#resultsTable thead tr');
+        if (thead) {
+            if (showRiskScore && !thead.querySelector('th[data-risk-column]')) {
+                // Add risk score column
+                const th = document.createElement('th');
+                th.textContent = 'Risikoscore';
+                th.setAttribute('data-risk-column', 'true');
+                th.style.textAlign = 'center';
+                thead.appendChild(th);
+            } else if (!showRiskScore && thead.querySelector('th[data-risk-column]')) {
+                // Remove risk score column
+                thead.querySelector('th[data-risk-column]').remove();
+            }
         }
         
         tbody.innerHTML = displayData.map(item => {
@@ -315,6 +334,15 @@ class App {
                 empAfter = item.employeesAfter;
             }
             
+            const riskScoreHtml = showRiskScore ? `
+                <td style="text-align: center;">
+                    <div style="display: inline-block; background: ${item.riskScore >= 85 ? '#c33' : item.riskScore >= 75 ? '#f90' : item.riskScore >= 65 ? '#fa0' : '#10b981'}; 
+                                color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-weight: bold; min-width: 50px;">
+                        ${item.riskScore}
+                    </div>
+                </td>
+            ` : '';
+            
             return `
                 <tr data-orgnr="${item.orgnr}" class="${isExtremeChange ? 'extreme-change-row' : ''}">
                     <td>${item.orgnr}</td>
@@ -326,6 +354,7 @@ class App {
                     <td>${empAfter}</td>
                     <td class="${changeClass}">${changeValue > 0 ? '+' : ''}${changeValue}</td>
                     <td class="${changeClass}">${changePercent !== 'N/A' ? (changeValue > 0 ? '+' : '') + changePercent + '%' : 'N/A'}</td>
+                    ${riskScoreHtml}
                 </tr>
             `;
         }).join('');
@@ -766,11 +795,18 @@ class App {
         const summary = mlAnalyzer.getClusterSummary();
         const container = document.getElementById('clusterSummary');
         
+        // Store clusters for later use
+        this.currentClusters = clusters;
+        
         let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">';
         
-        summary.forEach(cluster => {
+        summary.forEach((cluster, index) => {
             html += `
-                <div style="padding: 1.5rem; background: ${cluster.color}15; border-left: 4px solid ${cluster.color}; border-radius: 8px;">
+                <div onclick="window.appInstance.showClusterCompanies(${index})" 
+                     style="padding: 1.5rem; background: ${cluster.color}15; border-left: 4px solid ${cluster.color}; 
+                            border-radius: 8px; cursor: pointer; transition: all 0.3s ease; user-select: none;"
+                     onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.12)';"
+                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
                     <h3 style="margin: 0 0 0.5rem 0; color: ${cluster.color};">${cluster.label}</h3>
                     <p style="margin: 0 0 1rem 0; color: #666; font-size: 0.9rem;">${cluster.description}</p>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.85rem;">
@@ -779,12 +815,62 @@ class App {
                         <div><strong>Gj.snitt endring:</strong> ${cluster.stats.avgChange.toFixed(0)}</div>
                         <div><strong>Gj.snitt %:</strong> ${cluster.stats.avgPercentChange.toFixed(1)}%</div>
                     </div>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid ${cluster.color}40; 
+                                text-align: center; font-size: 0.85rem; color: ${cluster.color}; font-weight: 600;">
+                        👉 Klikk for å se selskapene
+                    </div>
                 </div>
             `;
         });
         
         html += '</div>';
         container.innerHTML = html;
+    }
+
+    showClusterCompanies(clusterIndex) {
+        if (!this.currentClusters || !this.currentClusters[clusterIndex]) {
+            return;
+        }
+
+        const cluster = this.currentClusters[clusterIndex];
+        const companies = cluster.items;
+
+        // Sort by risk score descending
+        const sortedCompanies = companies
+            .map(company => ({
+                ...company,
+                riskScore: mlAnalyzer.calculateRiskScore(company)
+            }))
+            .sort((a, b) => b.riskScore - a.riskScore);
+
+        // Show filter alert
+        const alertDiv = document.getElementById('activeFilterAlert');
+        alertDiv.className = 'filter-alert';
+        alertDiv.style.background = cluster.color + '15';
+        alertDiv.style.borderLeft = `4px solid ${cluster.color}`;
+        alertDiv.innerHTML = `
+            <div class="filter-alert-content">
+                <div class="filter-alert-icon" style="background: ${cluster.color}20; color: ${cluster.color};">🤖</div>
+                <div class="filter-alert-text">
+                    <div class="filter-alert-title" style="color: ${cluster.color};">${cluster.label}</div>
+                    <div class="filter-alert-subtitle">${cluster.description} - Viser ${sortedCompanies.length} selskaper</div>
+                </div>
+            </div>
+            <button class="filter-alert-close" onclick="window.appInstance.clearFilter()" title="Tilbakestill filter">✕</button>
+        `;
+        alertDiv.style.display = 'block';
+
+        // Update table with cluster companies (show all, no limit)
+        this.updateTable(sortedCompanies, false);
+        exportManager.setData(sortedCompanies, dataProcessor.getStatistics());
+
+        // Scroll to results
+        setTimeout(() => {
+            document.getElementById('resultsSection').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }, 100);
     }
 
     displayHighRiskCompanies() {
