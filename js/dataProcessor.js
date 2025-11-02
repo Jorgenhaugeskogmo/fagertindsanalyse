@@ -103,50 +103,55 @@ class DataProcessor {
     // Read file as text with proper encoding detection
     readFile(file) {
         return new Promise((resolve, reject) => {
-            // Try multiple encodings in order
-            const tryEncodings = ['ISO-8859-1', 'Windows-1252', 'UTF-8'];
-            let currentIndex = 0;
-            
-            const tryNextEncoding = () => {
-                if (currentIndex >= tryEncodings.length) {
-                    // If all fail, use UTF-8 as last resort
-                    const finalReader = new FileReader();
-                    finalReader.onload = (e) => resolve(e.target.result);
-                    finalReader.onerror = (e) => reject(e);
-                    finalReader.readAsText(file, 'UTF-8');
-                    return;
+            // Read as binary first to detect and fix encoding issues
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const bytes = new Uint8Array(e.target.result);
+                let text = '';
+                
+                // Manual character mapping for Norwegian characters
+                // Based on the actual hex values in the CSV files
+                const charMap = {
+                    0x8F: 'ø',  // Krøkerøy appears as KR\x8FKER\x9DY
+                    0x9D: 'å',  // å
+                    0x86: 'æ',  // æ (common in CP850)
+                    0x91: 'æ',  // Alternative æ
+                    0x9B: 'ø',  // Alternative ø (CP850)
+                    0x86: 'Æ',  // Æ
+                    0x8E: 'Ø',  // Ø
+                    0x8F: 'Å'   // Å (if uppercase)
+                };
+                
+                // Convert bytes to text with character mapping
+                for (let i = 0; i < bytes.length; i++) {
+                    const byte = bytes[i];
+                    
+                    // Check for special Norwegian characters
+                    if (charMap[byte]) {
+                        // Check context - if previous char is lowercase, use lowercase mapping
+                        if (i > 0) {
+                            const prevByte = bytes[i - 1];
+                            const prevChar = String.fromCharCode(prevByte);
+                            if (prevChar >= 'a' && prevChar <= 'z') {
+                                // Use lowercase
+                                if (byte === 0x8F) text += 'ø';
+                                else if (byte === 0x9D) text += 'å';
+                                else if (byte === 0x86) text += 'æ';
+                                else text += charMap[byte].toLowerCase();
+                                continue;
+                            }
+                        }
+                        text += charMap[byte];
+                    } else {
+                        // Standard ASCII or extended character
+                        text += String.fromCharCode(byte);
+                    }
                 }
                 
-                const encoding = tryEncodings[currentIndex];
-                const reader = new FileReader();
-                
-                reader.onload = (e) => {
-                    const text = e.target.result;
-                    
-                    // Check if text looks valid (no weird replacement chars or control chars)
-                    const hasReplacementChar = text.includes('�');
-                    const hasWeirdChars = /[\x00-\x08\x0B-\x0C\x0E-\x1F]/.test(text.substring(0, 1000));
-                    
-                    if (hasReplacementChar || hasWeirdChars) {
-                        // Try next encoding
-                        currentIndex++;
-                        tryNextEncoding();
-                    } else {
-                        // This encoding looks good
-                        resolve(text);
-                    }
-                };
-                
-                reader.onerror = (e) => {
-                    // Try next encoding on error
-                    currentIndex++;
-                    tryNextEncoding();
-                };
-                
-                reader.readAsText(file, encoding);
+                resolve(text);
             };
-            
-            tryNextEncoding();
+            reader.onerror = (e) => reject(e);
+            reader.readAsArrayBuffer(file);
         });
     }
 
