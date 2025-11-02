@@ -110,16 +110,16 @@ class DataProcessor {
                 let text = '';
                 
                 // Manual character mapping for Norwegian characters
-                // Based on the actual hex values in the CSV files
+                // Based on the actual hex values in the CSV files from Brønnøysund
                 const charMap = {
-                    0x8F: 'ø',  // Krøkerøy appears as KR\x8FKER\x9DY
+                    0x8F: 'ø',  // Krøkerøy appears as KR\x8FKER\x9DY  
                     0x9D: 'å',  // å
-                    0x86: 'æ',  // æ (common in CP850)
+                    0x86: 'æ',  // æ
                     0x91: 'æ',  // Alternative æ
                     0x9B: 'ø',  // Alternative ø (CP850)
-                    0x86: 'Æ',  // Æ
-                    0x8E: 'Ø',  // Ø
-                    0x8F: 'Å'   // Å (if uppercase)
+                    0x8E: 'Æ',  // Æ (uppercase)
+                    0x9A: 'Ø',  // Ø (uppercase) 
+                    0x8D: 'Å'   // Å (uppercase)
                 };
                 
                 // Convert bytes to text with character mapping
