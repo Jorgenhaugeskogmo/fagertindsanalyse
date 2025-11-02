@@ -8,6 +8,7 @@ class App {
         this.hideDuplicates = false;
         this.currentRiskThreshold = 70;
         this.allMLCompanies = null;
+        this.mlReportData = null;
         this.init();
     }
 
@@ -80,6 +81,14 @@ class App {
         if (slider) {
             slider.addEventListener('input', (e) => {
                 this.updateRiskThreshold(parseInt(e.target.value));
+            });
+        }
+
+        const exportMlBtn = document.getElementById('exportMlPdfBtn');
+        if (exportMlBtn) {
+            exportMlBtn.disabled = true;
+            exportMlBtn.addEventListener('click', () => {
+                exportManager.exportMLReportPDF();
             });
         }
     }
@@ -775,6 +784,10 @@ class App {
 
         // Show loading
         document.getElementById('loadingOverlay').style.display = 'flex';
+        const exportMlBtn = document.getElementById('exportMlPdfBtn');
+        if (exportMlBtn) {
+            exportMlBtn.disabled = true;
+        }
 
         setTimeout(() => {
             try {
@@ -797,6 +810,10 @@ class App {
                     ...company,
                     riskScore: mlAnalyzer.calculateRiskScore(company)
                 }));
+                this.mlReportData = {
+                    threshold: this.currentRiskThreshold,
+                    generatedAt: new Date().toISOString()
+                };
                 
                 // Display cluster overview
                 this.displayClusterOverview(clusters);
@@ -815,6 +832,10 @@ class App {
                 // Show results
                 document.getElementById('mlResults').style.display = 'block';
                 
+                if (exportMlBtn) {
+                    exportMlBtn.disabled = false;
+                }
+
                 // Scroll to ML section
                 document.getElementById('mlSection').scrollIntoView({ 
                     behavior: 'smooth', 
@@ -826,6 +847,9 @@ class App {
                 alert('Det oppstod en feil under ML-analysen: ' + error.message);
             } finally {
                 document.getElementById('loadingOverlay').style.display = 'none';
+                if (exportMlBtn && this.mlReportData && this.mlReportData.overview) {
+                    exportMlBtn.disabled = false;
+                }
             }
         }, 100);
     }
@@ -880,6 +904,17 @@ class App {
         `;
         
         container.innerHTML = html;
+
+        if (!this.mlReportData) this.mlReportData = {};
+        this.mlReportData.overview = {
+            totalCompanies,
+            highRiskCount: highRiskCluster ? highRiskCluster.size : 0,
+            mediumRiskCount: mediumRiskCluster ? mediumRiskCluster.size : 0,
+            growthCount: growthCluster ? growthCluster.size : 0,
+            declineCount: declineCluster ? declineCluster.size : 0,
+            avgYears: Number(avgYears.toFixed(1)),
+            avgChange: Number(avgChange.toFixed(1))
+        };
     }
 
     updateRiskThreshold(threshold) {
@@ -1027,6 +1062,27 @@ class App {
         html += '</div>';
 
         container.innerHTML = html;
+
+        if (!this.mlReportData) this.mlReportData = {};
+        this.mlReportData.insights = {
+            largestCluster: largestCluster ? {
+                label: largestCluster.label,
+                size: largestCluster.size
+            } : null,
+            longestSinceMove: longestSinceMove ? {
+                label: longestSinceMove.label,
+                avgYearsSinceMove: Number(longestSinceMove.stats.avgYearsSinceMove.toFixed(1))
+            } : null,
+            strongestGrowth: strongestGrowth ? {
+                label: strongestGrowth.label,
+                avgPercentChange: Number(strongestGrowth.stats.avgPercentChange.toFixed(1))
+            } : null,
+            strongestDecline: strongestDecline ? {
+                label: strongestDecline.label,
+                avgPercentChange: Number(strongestDecline.stats.avgPercentChange.toFixed(1))
+            } : null,
+            positiveShare: Number(positiveShare)
+        };
     }
 
     showClusterCompanies(clusterIndex) {
@@ -1078,6 +1134,8 @@ class App {
     displayHighRiskCompanies(threshold = 70) {
         const highRisk = mlAnalyzer.getHighRiskCompanies(threshold);
         const container = document.getElementById('highRiskCompanies');
+        if (!this.mlReportData) this.mlReportData = {};
+        this.mlReportData.threshold = threshold;
         
         // Update counter
         document.getElementById('riskCompanyCount').textContent = `${highRisk.length} ${highRisk.length === 1 ? 'selskap' : 'selskaper'}`;
@@ -1090,6 +1148,9 @@ class App {
                     <p style="margin: 0; color: #4ade80;">Senk terskelen for å se flere selskaper med risiko.</p>
                 </div>
             `;
+            this.mlReportData.riskDistribution = { veryHigh: 0, high: 0, moderate: 0 };
+            this.mlReportData.highRiskCompanies = [];
+            this.mlReportData.generatedAt = new Date().toISOString();
             return;
         }
 
@@ -1162,6 +1223,23 @@ class App {
         `;
         
         container.innerHTML = html;
+
+        this.mlReportData.riskDistribution = {
+            veryHigh,
+            high,
+            moderate
+        };
+        this.mlReportData.highRiskCompanies = highRisk.map(company => ({
+            orgnr: company.orgnr,
+            name: company.name,
+            yearsSinceMove: company.yearsSinceMove || 0,
+            employeesAtMove: company.employeesAtMove ?? company.employeesBefore ?? 0,
+            employeesNow: company.employeesNow ?? company.employeesAfter ?? 0,
+            employeeChange: company.employeeChangeSinceMove ?? company.employeeChange ?? 0,
+            employeeChangePercent: Number(parseFloat(company.changePercentSinceMove || company.employeeChangePercent || 0).toFixed(1)),
+            riskScore: company.riskScore
+        }));
+        this.mlReportData.generatedAt = new Date().toISOString();
     }
 
     displayActionRecommendations(threshold = this.currentRiskThreshold) {
@@ -1278,6 +1356,34 @@ class App {
                 ${renderList('Nedskalering – vurder mindre lokaler', contractionCandidates, 'Ingen markante nedskaleringskandidater.', '#b91c1c')}
             </div>
         `;
+
+        if (!this.mlReportData) this.mlReportData = {};
+        const toReportItem = (item) => ({
+            orgnr: item.orgnr,
+            name: item.name,
+            riskScore: item.riskScore,
+            yearsSinceMove: item.yearsSinceMove || 0,
+            employeesAtMove: item.employeesAtMove ?? item.employeesBefore ?? 0,
+            employeesNow: item.employeesNow ?? item.employeesAfter ?? 0,
+            employeeChange: item.employeeChangeSinceMove ?? item.employeeChange ?? 0,
+            employeeChangePercent: Number(parsePercent(item.changePercentSinceMove).toFixed(1))
+        });
+
+        this.mlReportData.recommendations = {
+            portfolio: {
+                threshold,
+                highRiskCount: highRiskNow.length,
+                totalAtRiskEmployees,
+                averageRiskScore: highRiskNow.length > 0 ? Number((highRiskNow.reduce((sum, c) => sum + c.riskScore, 0) / highRiskNow.length).toFixed(1)) : 0,
+                topGrowth: expansionCandidates[0] ? toReportItem(expansionCandidates[0]) : null,
+                topDecline: contractionCandidates[0] ? toReportItem(contractionCandidates[0]) : null
+            },
+            renewal: renewalCandidates.map(toReportItem),
+            expansion: expansionCandidates.map(toReportItem),
+            contraction: contractionCandidates.map(toReportItem)
+        };
+
+        exportManager.setMLReport(this.mlReportData);
     }
 
     sortTable(sortKey) {

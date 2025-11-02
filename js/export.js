@@ -3,12 +3,17 @@ class ExportManager {
     constructor() {
         this.currentData = null;
         this.stats = null;
+        this.mlReport = null;
     }
 
     // Set current data
     setData(data, stats) {
         this.currentData = data;
         this.stats = stats;
+    }
+
+    setMLReport(report) {
+        this.mlReport = report;
     }
 
     // Export to CSV
@@ -211,6 +216,207 @@ class ExportManager {
         // Save PDF
         const timestamp = new Date().toISOString().split('T')[0];
         doc.save(`fagertindsanalyse_${timestamp}.pdf`);
+    }
+
+    exportMLReportPDF() {
+        if (!this.mlReport || !this.mlReport.overview) {
+            alert('Kjør ML-analysen før du eksporterer ML-rapporten.');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const formatDateTime = (isoString) => {
+            if (!isoString) return new Date().toLocaleString('no-NO');
+            const date = new Date(isoString);
+            return date.toLocaleString('no-NO', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
+
+        const ensureSpace = (needed = 10) => {
+            const height = doc.internal.pageSize.getHeight();
+            if (yPos + needed > height - 15) {
+                doc.addPage();
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                yPos = 20;
+            }
+        };
+
+        const addSectionTitle = (title) => {
+            ensureSpace(10);
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text(title, 15, yPos);
+            yPos += 7;
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+        };
+
+        const addLine = (text) => {
+            ensureSpace(6);
+            doc.text(text, 15, yPos);
+            yPos += 6;
+        };
+
+        // Title
+        doc.setFontSize(20);
+        doc.setFont(undefined, 'bold');
+        doc.text('Fagertindsanalyse - ML-rapport', 15, 20);
+
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.text(`Generert: ${formatDateTime(this.mlReport.generatedAt)}`, 15, 28);
+        doc.text(`Risikoscore-terskel: ${this.mlReport.threshold ?? 70}`, 15, 34);
+
+        let yPos = 40;
+
+        // Overview
+        addSectionTitle('Oversikt');
+        const overview = this.mlReport.overview;
+        if (overview) {
+            addLine(`Totalt analyserte selskaper: ${overview.totalCompanies}`);
+            addLine(`Høy risiko: ${overview.highRiskCount} · Medium risiko: ${overview.mediumRiskCount}`);
+            addLine(`Ekspansjon: ${overview.growthCount} · Nedskalering: ${overview.declineCount}`);
+            addLine(`Gjennomsnitt år siden flytting: ${overview.avgYears} år`);
+            addLine(`Gjennomsnittlig endring i ansatte: ${overview.avgChange > 0 ? '+' : ''}${overview.avgChange} ansatte`);
+        }
+
+        // Insights
+        const insights = this.mlReport.insights;
+        if (insights) {
+            addSectionTitle('Nøkkelinnsikter');
+            if (insights.largestCluster) {
+                addLine(`• Største cluster: ${insights.largestCluster.label} (${insights.largestCluster.size} selskaper)`);
+            }
+            if (insights.longestSinceMove) {
+                addLine(`• Lengst siden flytting: ${insights.longestSinceMove.label} (${insights.longestSinceMove.avgYearsSinceMove} år i snitt)`);
+            }
+            if (insights.strongestGrowth) {
+                addLine(`• Sterkest vekst: ${insights.strongestGrowth.label} (${insights.strongestGrowth.avgPercentChange}% snitt)`);
+            }
+            if (insights.strongestDecline) {
+                addLine(`• Kraftigst nedgang: ${insights.strongestDecline.label} (${insights.strongestDecline.avgPercentChange}% snitt)`);
+            }
+            addLine(`• Andel selskaper med positiv utvikling: ${insights.positiveShare}%`);
+        }
+
+        // Risk distribution
+        const riskDistribution = this.mlReport.riskDistribution;
+        if (riskDistribution) {
+            addSectionTitle('Risikooversikt');
+            addLine(`Svært høy risiko (≥85): ${riskDistribution.veryHigh}`);
+            addLine(`Høy risiko (75-84): ${riskDistribution.high}`);
+            addLine(`Moderat risiko (${this.mlReport.threshold ?? 70}-74): ${riskDistribution.moderate}`);
+        }
+
+        // High-risk companies table
+        const highRiskCompanies = (this.mlReport.highRiskCompanies || []);
+        if (highRiskCompanies.length > 0) {
+            addSectionTitle('Høyrisiko selskaper');
+            const tableRows = highRiskCompanies.slice(0, 40).map(item => [
+                item.riskScore,
+                item.name,
+                item.orgnr,
+                item.yearsSinceMove,
+                item.employeesAtMove,
+                item.employeesNow,
+                item.employeeChange,
+                `${item.employeeChangePercent}%`
+            ]);
+
+            doc.autoTable({
+                startY: yPos,
+                head: [[
+                    'Risiko',
+                    'Navn',
+                    'Org.nr',
+                    'År siden flytting',
+                    'Ansatte (da)',
+                    'Ansatte (nå)',
+                    'Endring',
+                    '% Endring'
+                ]],
+                body: tableRows,
+                theme: 'striped',
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 2
+                },
+                headStyles: {
+                    fillColor: [239, 68, 68],
+                    textColor: 255,
+                    fontStyle: 'bold'
+                }
+            });
+
+            yPos = doc.lastAutoTable.finalY + 10;
+        } else {
+            addSectionTitle('Høyrisiko selskaper');
+            addLine('Ingen selskaper ligger over gjeldende terskel.');
+        }
+
+        // Recommendations
+        const recs = this.mlReport.recommendations;
+        if (recs) {
+            addSectionTitle('Anbefalte tiltak');
+            const portfolio = recs.portfolio || {};
+            addLine(`Portefølje: ${portfolio.highRiskCount || 0} selskaper over terskel. Samlet ansattendring: ${portfolio.totalAtRiskEmployees || 0}.`);
+            addLine(`Snitt risiko: ${portfolio.averageRiskScore || 0}.`);
+            if (portfolio.topGrowth) {
+                addLine(`Størst vekst: ${portfolio.topGrowth.name} (+${portfolio.topGrowth.employeeChangePercent}% | Risiko ${portfolio.topGrowth.riskScore})`);
+            }
+            if (portfolio.topDecline) {
+                addLine(`Størst nedgang: ${portfolio.topDecline.name} (${portfolio.topDecline.employeeChangePercent}% | Risiko ${portfolio.topDecline.riskScore})`);
+            }
+
+            const addRecommendationList = (title, items) => {
+                ensureSpace(8);
+                doc.setFont(undefined, 'bold');
+                doc.text(title, 20, yPos);
+                yPos += 6;
+                doc.setFont(undefined, 'normal');
+                if (!items || items.length === 0) {
+                    addLine('  • Ingen kandidater akkurat nå.');
+                    return;
+                }
+                items.forEach(item => {
+                    const change = item.employeeChangePercent;
+                    addLine(`  • ${item.name} (org ${item.orgnr}) – ${item.yearsSinceMove} år, ${change > 0 ? '+' : ''}${change}% · Risiko ${item.riskScore}`);
+                });
+            };
+
+            addRecommendationList('Utgående leieavtaler (≥7 år)', recs.renewal);
+            addRecommendationList('Ekspansjon – planlegg ekstra areal', recs.expansion);
+            addRecommendationList('Nedskalering – vurder mindre lokaler', recs.contraction);
+        }
+
+        // Footer with page numbers
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text(
+                `Side ${i} av ${pageCount}`,
+                doc.internal.pageSize.getWidth() / 2,
+                doc.internal.pageSize.getHeight() - 10,
+                { align: 'center' }
+            );
+        }
+
+        const timestamp = new Date().toISOString().split('T')[0];
+        doc.save(`fagertindsanalyse_ml_${timestamp}.pdf`);
     }
 
     // Truncate text
