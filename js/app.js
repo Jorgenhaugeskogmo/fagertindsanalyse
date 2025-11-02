@@ -5,6 +5,7 @@ class App {
         this.currentResults = [];
         this.currentSortColumn = null;
         this.currentSortDirection = 'asc';
+        this.hideDuplicates = false;
         this.init();
     }
 
@@ -64,6 +65,12 @@ class App {
                 const sortKey = th.getAttribute('data-sort');
                 this.sortTable(sortKey);
             });
+        });
+
+        // Hide duplicates checkbox
+        document.getElementById('hideDuplicatesCheckbox').addEventListener('change', (e) => {
+            this.hideDuplicates = e.target.checked;
+            this.applyDuplicateFilter();
         });
     }
 
@@ -243,6 +250,7 @@ class App {
 
     displayResults(data) {
         this.currentResults = data;
+        this.originalResults = data; // Store original for duplicate filtering
         
         // Store data for export
         exportManager.setData(data, dataProcessor.getStatistics());
@@ -1015,6 +1023,81 @@ class App {
         // Re-render table with sorted data
         this.currentResults = sorted;
         this.updateTable(sorted, false);
+    }
+
+    applyDuplicateFilter() {
+        if (!this.currentResults || this.currentResults.length === 0) return;
+
+        let dataToDisplay;
+
+        if (this.hideDuplicates) {
+            // Group by organization number and keep only the latest entry
+            const latestByOrg = new Map();
+            
+            this.currentResults.forEach(item => {
+                const existing = latestByOrg.get(item.orgnr);
+                
+                if (!existing || item.year > existing.year) {
+                    latestByOrg.set(item.orgnr, item);
+                }
+            });
+            
+            dataToDisplay = Array.from(latestByOrg.values());
+            
+            // Re-apply current sort if any
+            if (this.currentSortColumn) {
+                const sortKey = this.currentSortColumn;
+                const direction = this.currentSortDirection;
+                
+                dataToDisplay.sort((a, b) => {
+                    let valA, valB;
+                    
+                    switch(sortKey) {
+                        case 'orgnr':
+                            valA = a.orgnr || '';
+                            valB = b.orgnr || '';
+                            break;
+                        case 'name':
+                            valA = (a.name || '').toLowerCase();
+                            valB = (b.name || '').toLowerCase();
+                            break;
+                        case 'year':
+                            valA = a.year || 0;
+                            valB = b.year || 0;
+                            break;
+                        case 'empBefore':
+                            valA = a.employeesAtMove !== undefined ? a.employeesAtMove : (a.employeesBefore || 0);
+                            valB = b.employeesAtMove !== undefined ? b.employeesAtMove : (b.employeesBefore || 0);
+                            break;
+                        case 'empAfter':
+                            valA = a.employeesNow !== undefined ? a.employeesNow : (a.employeesAfter || 0);
+                            valB = b.employeesNow !== undefined ? b.employeesNow : (b.employeesAfter || 0);
+                            break;
+                        case 'change':
+                            valA = a.employeeChangeSinceMove !== undefined ? a.employeeChangeSinceMove : (a.employeeChange || 0);
+                            valB = b.employeeChangeSinceMove !== undefined ? b.employeeChangeSinceMove : (b.employeeChange || 0);
+                            break;
+                        case 'changePercent':
+                            valA = parseFloat(a.changePercentSinceMove !== undefined ? a.changePercentSinceMove : (a.employeeChangePercent || 0));
+                            valB = parseFloat(b.changePercentSinceMove !== undefined ? b.changePercentSinceMove : (b.employeeChangePercent || 0));
+                            break;
+                        default:
+                            return 0;
+                    }
+                    
+                    if (typeof valA === 'string') {
+                        return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    } else {
+                        return direction === 'asc' ? valA - valB : valB - valA;
+                    }
+                });
+            }
+        } else {
+            dataToDisplay = this.currentResults;
+        }
+
+        this.updateTable(dataToDisplay, false);
+        exportManager.setData(dataToDisplay, dataProcessor.getStatistics());
     }
 }
 
