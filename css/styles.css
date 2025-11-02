@@ -294,6 +294,45 @@ body {
     font-size: 0.875rem;
 }
 
+.company-search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.company-search-input {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.company-search-input input {
+    flex: 1;
+    min-width: 220px;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.company-search-input input:focus {
+    outline: none;
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.company-search-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
 .form-select {
     padding: 0.75rem 1rem;
     border: 1.5px solid var(--border-color);

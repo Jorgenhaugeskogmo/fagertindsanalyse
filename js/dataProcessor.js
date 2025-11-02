@@ -405,6 +405,22 @@ class DataProcessor {
         return byYear;
     }
 
+    searchCompanies(query) {
+        if (!query) return [];
+        const normalized = query.trim().toLowerCase();
+        if (normalized.length === 0) return [];
+
+        return Array.from(this.companies.values()).filter(company => {
+            const name = (company.name || '').toLowerCase();
+            return name.includes(normalized) || company.orgnr.includes(normalized.replace(/\s/g, ''));
+        });
+    }
+
+    getAddressChangesForCompany(orgnr) {
+        if (!orgnr) return [];
+        return this.processedData.addressChanges.filter(change => change.orgnr === orgnr);
+    }
+
     // Get statistics
     getStatistics() {
         const changes = this.processedData.employeeChanges;

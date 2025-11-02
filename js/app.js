@@ -91,6 +91,20 @@ class App {
                 exportManager.exportMLReportPDF();
             });
         }
+
+        const companySearchBtn = document.getElementById('companySearchBtn');
+        const companySearchInput = document.getElementById('companySearchInput');
+        if (companySearchBtn && companySearchInput) {
+            companySearchBtn.addEventListener('click', () => {
+                this.searchCompany();
+            });
+            companySearchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.searchCompany();
+                }
+            });
+        }
     }
 
     setupDragDrop() {
@@ -623,6 +637,11 @@ class App {
 
     clearFilter() {
         document.getElementById('activeFilterAlert').style.display = 'none';
+        const hint = document.getElementById('companySearchHint');
+        if (hint) {
+            hint.textContent = 'Søk på minst tre tegn. Treffet vises både i tabellen og som detaljvisning med graf.';
+            hint.style.color = '#64748b';
+        }
         this.resetFilters();
     }
 
@@ -747,6 +766,10 @@ class App {
         document.getElementById('changeType').value = 'all';
         document.getElementById('topCount').value = '10';
         document.getElementById('activeFilterAlert').style.display = 'none';
+        const searchInput = document.getElementById('companySearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
         this.displayResults(dataProcessor.processedData.addressChanges);
     }
 
@@ -1531,6 +1554,88 @@ class App {
 
         this.updateTable(dataToDisplay, false);
         exportManager.setData(dataToDisplay, dataProcessor.getStatistics());
+    }
+
+    searchCompany() {
+        const input = document.getElementById('companySearchInput');
+        const hint = document.getElementById('companySearchHint');
+        if (!input) return;
+
+        const query = input.value.trim();
+        if (query.length < 3) {
+            if (hint) {
+                hint.textContent = 'Søk på minst tre tegn for å finne selskap.';
+                hint.style.color = '#dc2626';
+            }
+            return;
+        }
+
+        const matches = dataProcessor.searchCompanies(query);
+        const alertDiv = document.getElementById('activeFilterAlert');
+
+        if (!matches || matches.length === 0) {
+            if (hint) {
+                hint.textContent = `Fant ingen selskaper som matcher "${query}".`;
+                hint.style.color = '#dc2626';
+            }
+
+            if (alertDiv) {
+                alertDiv.className = 'filter-alert danger';
+                alertDiv.style.display = 'flex';
+                alertDiv.innerHTML = `
+                    <div class="filter-alert-content">
+                        <div class="filter-alert-icon">Søk</div>
+                        <div class="filter-alert-text">
+                            <div class="filter-alert-title">Ingen treff</div>
+                            <div class="filter-alert-subtitle">Fant ingen selskap som matcher "${query}"</div>
+                        </div>
+                    </div>
+                    <button class="filter-alert-close" onclick="window.appInstance.clearFilter()" title="Tilbakestill">✕</button>
+                `;
+            }
+
+            this.currentResults = [];
+            this.updateTable([]);
+            exportManager.setData([], dataProcessor.getStatistics());
+
+            const detailSection = document.getElementById('detailSection');
+            if (detailSection) {
+                detailSection.style.display = 'none';
+            }
+            return;
+        }
+
+        if (hint) {
+            hint.textContent = `Fant ${matches.length} selskap. Viser alle adresseendringer i tabellen.`;
+            hint.style.color = '#64748b';
+        }
+
+        const rows = matches.flatMap(match => dataProcessor.getAddressChangesForCompany(match.orgnr));
+
+        if (alertDiv) {
+            alertDiv.className = 'filter-alert';
+            alertDiv.style.display = 'flex';
+            alertDiv.innerHTML = `
+                <div class="filter-alert-content">
+                    <div class="filter-alert-icon">Søk</div>
+                    <div class="filter-alert-text">
+                        <div class="filter-alert-title">Treff: ${matches[0].name || matches[0].orgnr}</div>
+                        <div class="filter-alert-subtitle">Viser ${rows.length} adresseendringer for ${matches.length} selskap</div>
+                    </div>
+                </div>
+                <button class="filter-alert-close" onclick="window.appInstance.clearFilter()" title="Tilbakestill">✕</button>
+            `;
+        }
+
+        this.currentResults = rows;
+        this.updateTable(rows, false);
+        exportManager.setData(rows, dataProcessor.getStatistics());
+
+        if (matches[0]) {
+            this.showCompanyDetails(matches[0].orgnr);
+        }
+
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 
