@@ -103,50 +103,50 @@ class DataProcessor {
     // Read file as text with proper encoding detection
     readFile(file) {
         return new Promise((resolve, reject) => {
-            // First try to detect encoding by reading as binary
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const arr = new Uint8Array(e.target.result);
-                const firstBytes = arr.slice(0, Math.min(1000, arr.length));
-                
-                // Check for BOM (Byte Order Mark)
-                let encoding = 'UTF-8';
-                if (firstBytes[0] === 0xEF && firstBytes[1] === 0xBB && firstBytes[2] === 0xBF) {
-                    encoding = 'UTF-8'; // UTF-8 BOM
-                } else {
-                    // Try to detect by checking for typical Norwegian characters
-                    // If we see bytes in the Windows-1252 range for æøå, use that
-                    for (let i = 0; i < firstBytes.length; i++) {
-                        const byte = firstBytes[i];
-                        // Check for Windows-1252 encoded æøå (0xE6, 0xF8, 0xE5, 0xC6, 0xD8, 0xC5)
-                        if (byte === 0xE6 || byte === 0xF8 || byte === 0xE5 || 
-                            byte === 0xC6 || byte === 0xD8 || byte === 0xC5) {
-                            encoding = 'Windows-1252';
-                            break;
-                        }
-                    }
+            // Try multiple encodings in order
+            const tryEncodings = ['ISO-8859-1', 'Windows-1252', 'UTF-8'];
+            let currentIndex = 0;
+            
+            const tryNextEncoding = () => {
+                if (currentIndex >= tryEncodings.length) {
+                    // If all fail, use UTF-8 as last resort
+                    const finalReader = new FileReader();
+                    finalReader.onload = (e) => resolve(e.target.result);
+                    finalReader.onerror = (e) => reject(e);
+                    finalReader.readAsText(file, 'UTF-8');
+                    return;
                 }
                 
-                // Now read with detected encoding
-                const textReader = new FileReader();
-                textReader.onload = (e2) => {
-                    let text = e2.target.result;
+                const encoding = tryEncodings[currentIndex];
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    const text = e.target.result;
                     
-                    // If still contains replacement characters, try Windows-1252
-                    if (text.includes('�') && encoding === 'UTF-8') {
-                        const fallbackReader = new FileReader();
-                        fallbackReader.onload = (e3) => resolve(e3.target.result);
-                        fallbackReader.onerror = (e3) => reject(e3);
-                        fallbackReader.readAsText(file, 'Windows-1252');
+                    // Check if text looks valid (no weird replacement chars or control chars)
+                    const hasReplacementChar = text.includes('�');
+                    const hasWeirdChars = /[\x00-\x08\x0B-\x0C\x0E-\x1F]/.test(text.substring(0, 1000));
+                    
+                    if (hasReplacementChar || hasWeirdChars) {
+                        // Try next encoding
+                        currentIndex++;
+                        tryNextEncoding();
                     } else {
+                        // This encoding looks good
                         resolve(text);
                     }
                 };
-                textReader.onerror = (e2) => reject(e2);
-                textReader.readAsText(file, encoding);
+                
+                reader.onerror = (e) => {
+                    // Try next encoding on error
+                    currentIndex++;
+                    tryNextEncoding();
+                };
+                
+                reader.readAsText(file, encoding);
             };
-            reader.onerror = (e) => reject(e);
-            reader.readAsArrayBuffer(file);
+            
+            tryNextEncoding();
         });
     }
 
