@@ -92,6 +92,13 @@ class App {
             });
         }
 
+        const exportManualBtn = document.getElementById('exportManualBtn');
+        if (exportManualBtn) {
+            exportManualBtn.addEventListener('click', () => {
+                exportManager.exportUserManualPDF();
+            });
+        }
+
         const companySearchBtn = document.getElementById('companySearchBtn');
         const companySearchInput = document.getElementById('companySearchInput');
         if (companySearchBtn && companySearchInput) {

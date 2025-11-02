@@ -419,6 +419,101 @@ class ExportManager {
         doc.save(`fagertindsanalyse_ml_${timestamp}.pdf`);
     }
 
+    exportUserManualPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+        const margin = 20;
+        let yPos = margin;
+
+        const addTitle = (text) => {
+            doc.setFontSize(18);
+            doc.setFont(undefined, 'bold');
+            doc.text(text, margin, yPos);
+            yPos += 10;
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'normal');
+        };
+
+        const addHeading = (text) => {
+            doc.setFontSize(13);
+            doc.setFont(undefined, 'bold');
+            doc.text(text, margin, yPos);
+            yPos += 7;
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'normal');
+        };
+
+        const addParagraph = (text, indent = 0) => {
+            const lines = doc.splitTextToSize(text, 170 - indent);
+            lines.forEach(line => {
+                if (yPos > 280) {
+                    doc.addPage();
+                    yPos = margin;
+                }
+                doc.text(line, margin + indent, yPos);
+                yPos += 6;
+            });
+            yPos += 2;
+        };
+
+        addTitle('Brukermanual – Fagertindsanalyse');
+        addParagraph(`Generert: ${new Date().toLocaleString('no-NO', {
+            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        })}`);
+
+        addHeading('1. Opplasting og analyse');
+        addParagraph('• Klikk «Legg til filer» eller dra CSV-filene inn i opplastingsfeltet (én fil pr. år).');
+        addParagraph('• Sørg for at alle ønskede år er valgt. Når du er klar, trykk «Analyser data».');
+        addParagraph('• Etter analyse vises toppkort med nøkkelstatistikk og tidslinje med adresseendringer.');
+
+        addHeading('2. Prediktiv ML-analyse');
+        addParagraph('• Trykk «Kjør ML-analyse» for å kjøre clustering og risikovurdering av selskaper som flyttet for 3 eller 8 år siden.');
+        addParagraph('• Juster risikoscore-terskel (50–90) for å se hvordan høyrisikolisten endres.');
+        addParagraph('• Kortene viser største cluster, sterkest vekst/nedgang, lengst siden flytting, og andel selskaper med positiv utvikling.');
+        addParagraph('• Handlingssenteret presenterer anbefalinger: utgående leieavtaler, ekspansjon og nedskalering.');
+        addParagraph('• Eksportér ML-analysen som PDF via «Eksporter ML-rapport».');
+
+        addHeading('3. Filtrering og sortering');
+        addParagraph('• «Filter resultater» lar deg kombinere filtre for år siden flytting, vekst/nedgang og antall resultater.');
+        addParagraph('• Velg «Vis kun siste flytting per selskap» for å se bare nyeste adresseendring per organisasjonsnummer.');
+        addParagraph('• Klikk på kolonneoverskrifter for å sortere stigende/synkende (organisasjonsnummer, år, endring osv.).');
+
+        addHeading('4. Søk etter spesifikt selskap');
+        addParagraph('• Bruk søkefeltet «Finn trend for spesifikt selskap» (navn eller org.nr., minst tre tegn).');
+        addParagraph('• Treff vises i tabellen og detaljseksjonen åpnes med graf over ansattutvikling samt adressehistorikk.');
+        addParagraph('• Eksport (CSV, PDF, ML) reflekterer aktivt søk og filtrering.');
+
+        addHeading('5. Detaljvisning og graf');
+        addParagraph('• Klikk en rad i tabellen for å åpne detaljkortet. Grafen viser ansattutvikling over tid.');
+        addParagraph('• Adressekortet gir oversikt over historiske adresser (postnummer/poststed).');
+
+        addHeading('6. Eksport');
+        addParagraph('• «Eksporter CSV»/«Eksporter PDF» genererer rapporter av tabellen slik den er filtrert akkurat nå.');
+        addParagraph('• «Eksporter ML-rapport» bygger en egen PDF med risikofordeling, innsikter og anbefalingslister.');
+        addParagraph('• Denne brukermanualen lastes ned via «Brukermanual (PDF)».');
+
+        addHeading('7. Tips til arbeidsflyt');
+        addParagraph('• Last opp komplette årsdata for å få korrekte beregninger for «3/8 år siden».');
+        addParagraph('• Kjør ML-analysen etter at du har filtrert eller søkt, slik at eksportene gjenspeiler fokusområdet ditt.');
+        addParagraph('• Ta jevnlige PDF-snapshots for å dokumentere utviklingen over tid og dele med kolleger.');
+
+        // Footer with page numbers
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(9);
+            doc.setTextColor(120);
+            doc.text(`Brukermanual – Fagertindsanalyse · Side ${i} av ${pageCount}`,
+                doc.internal.pageSize.getWidth() / 2,
+                doc.internal.pageSize.getHeight() - 10,
+                { align: 'center' });
+        }
+
+        const timestamp = new Date().toISOString().split('T')[0];
+        doc.save(`fagertindsanalyse_brukermanual_${timestamp}.pdf`);
+    }
+
     // Truncate text
     truncateText(text, maxLength) {
         if (!text) return '';
