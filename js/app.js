@@ -3,6 +3,8 @@ class App {
     constructor() {
         this.files = [];
         this.currentResults = [];
+        this.currentSortColumn = null;
+        this.currentSortDirection = 'asc';
         this.init();
     }
 
@@ -941,6 +943,78 @@ class App {
         `;
         
         container.innerHTML = html;
+    }
+
+    sortTable(sortKey) {
+        if (!this.currentResults || this.currentResults.length === 0) return;
+
+        // Toggle direction if clicking same column
+        if (this.currentSortColumn === sortKey) {
+            this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.currentSortColumn = sortKey;
+            this.currentSortDirection = 'asc';
+        }
+
+        // Sort the data
+        const sorted = [...this.currentResults].sort((a, b) => {
+            let valA, valB;
+
+            switch(sortKey) {
+                case 'orgnr':
+                    valA = a.orgnr || '';
+                    valB = b.orgnr || '';
+                    break;
+                case 'name':
+                    valA = (a.name || '').toLowerCase();
+                    valB = (b.name || '').toLowerCase();
+                    break;
+                case 'year':
+                    valA = a.year || 0;
+                    valB = b.year || 0;
+                    break;
+                case 'empBefore':
+                    valA = a.employeesAtMove !== undefined ? a.employeesAtMove : (a.employeesBefore || 0);
+                    valB = b.employeesAtMove !== undefined ? b.employeesAtMove : (b.employeesBefore || 0);
+                    break;
+                case 'empAfter':
+                    valA = a.employeesNow !== undefined ? a.employeesNow : (a.employeesAfter || 0);
+                    valB = b.employeesNow !== undefined ? b.employeesNow : (b.employeesAfter || 0);
+                    break;
+                case 'change':
+                    valA = a.employeeChangeSinceMove !== undefined ? a.employeeChangeSinceMove : (a.employeeChange || 0);
+                    valB = b.employeeChangeSinceMove !== undefined ? b.employeeChangeSinceMove : (b.employeeChange || 0);
+                    break;
+                case 'changePercent':
+                    valA = parseFloat(a.changePercentSinceMove !== undefined ? a.changePercentSinceMove : (a.employeeChangePercent || 0));
+                    valB = parseFloat(b.changePercentSinceMove !== undefined ? b.changePercentSinceMove : (b.employeeChangePercent || 0));
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (typeof valA === 'string') {
+                return this.currentSortDirection === 'asc' 
+                    ? valA.localeCompare(valB)
+                    : valB.localeCompare(valA);
+            } else {
+                return this.currentSortDirection === 'asc'
+                    ? valA - valB
+                    : valB - valA;
+            }
+        });
+
+        // Update sort indicators
+        document.querySelectorAll('.data-table th.sortable').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === sortKey) {
+                th.classList.add(`sort-${this.currentSortDirection}`);
+            }
+        });
+
+        // Re-render table with sorted data
+        this.currentResults = sorted;
+        this.updateTable(sorted, false);
     }
 }
 

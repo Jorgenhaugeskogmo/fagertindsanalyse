@@ -489,6 +489,34 @@ body {
     white-space: nowrap;
 }
 
+.data-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.data-table th.sortable:hover {
+    background: var(--background);
+    color: var(--primary-color);
+}
+
+.data-table th.sortable .sort-indicator {
+    display: inline-block;
+    margin-left: 0.5rem;
+    opacity: 0.3;
+    font-size: 0.75rem;
+}
+
+.data-table th.sortable.sort-asc .sort-indicator::after {
+    content: '▲';
+    opacity: 1;
+}
+
+.data-table th.sortable.sort-desc .sort-indicator::after {
+    content: '▼';
+    opacity: 1;
+}
+
 .data-table td {
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
