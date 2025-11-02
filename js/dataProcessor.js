@@ -5,6 +5,7 @@ class DataProcessor {
         this.processedData = {};
         this.companies = new Map();
         this.currentYear = new Date().getFullYear();
+        this.datasetLatestYear = null;
     }
 
     // Parse CSV content
@@ -88,7 +89,9 @@ class DataProcessor {
             .map(d => d.year)
             .filter(year => Number.isFinite(year));
         if (availableYears.length > 0) {
-            this.currentYear = Math.max(...availableYears);
+            this.datasetLatestYear = Math.max(...availableYears);
+        } else {
+            this.datasetLatestYear = null;
         }
 
         // Build company timeline
