@@ -111,15 +111,16 @@ class DataProcessor {
                 
                 // Manual character mapping for Norwegian characters
                 // Based on the actual hex values in the CSV files from Brønnøysund
+                // Kråkerøy appears as KR\x8FKER\x9DY in the data
                 const charMap = {
-                    0x8F: 'ø',  // Krøkerøy appears as KR\x8FKER\x9DY  
-                    0x9D: 'å',  // å
-                    0x86: 'æ',  // æ
+                    0x8F: 'å',  // å (lowercase)
+                    0x9D: 'ø',  // ø (lowercase)
+                    0x86: 'æ',  // æ (lowercase)
                     0x91: 'æ',  // Alternative æ
                     0x9B: 'ø',  // Alternative ø (CP850)
-                    0x8E: 'Æ',  // Æ (uppercase)
+                    0x8D: 'Å',  // Å (uppercase)
                     0x9A: 'Ø',  // Ø (uppercase) 
-                    0x8D: 'Å'   // Å (uppercase)
+                    0x8E: 'Æ'   // Æ (uppercase)
                 };
                 
                 // Convert bytes to text with character mapping
@@ -128,19 +129,6 @@ class DataProcessor {
                     
                     // Check for special Norwegian characters
                     if (charMap[byte]) {
-                        // Check context - if previous char is lowercase, use lowercase mapping
-                        if (i > 0) {
-                            const prevByte = bytes[i - 1];
-                            const prevChar = String.fromCharCode(prevByte);
-                            if (prevChar >= 'a' && prevChar <= 'z') {
-                                // Use lowercase
-                                if (byte === 0x8F) text += 'ø';
-                                else if (byte === 0x9D) text += 'å';
-                                else if (byte === 0x86) text += 'æ';
-                                else text += charMap[byte].toLowerCase();
-                                continue;
-                            }
-                        }
                         text += charMap[byte];
                     } else {
                         // Standard ASCII or extended character
