@@ -43,7 +43,7 @@ class ExportManager {
         ].join('\n');
 
         const timestamp = new Date().toISOString().split('T')[0];
-        this.downloadFile(csvContent, `fremtidsanalyse_${timestamp}.csv`, 'text/csv;charset=utf-8;');
+        this.downloadFile(csvContent, `fagertindsanalyse_${timestamp}.csv`, 'text/csv;charset=utf-8;');
     }
 
     // Export to PDF
@@ -63,7 +63,7 @@ class ExportManager {
         // Add title
         doc.setFontSize(20);
         doc.setFont(undefined, 'bold');
-        doc.text('Fremtidsanalyse - Selskapsrapport', 15, 20);
+        doc.text('Fagertindsanalyse - Selskapsrapport', 15, 20);
 
         // Add date
         doc.setFontSize(10);
@@ -210,7 +210,7 @@ class ExportManager {
 
         // Save PDF
         const timestamp = new Date().toISOString().split('T')[0];
-        doc.save(`fremtidsanalyse_${timestamp}.pdf`);
+        doc.save(`fagertindsanalyse_${timestamp}.pdf`);
     }
 
     // Truncate text

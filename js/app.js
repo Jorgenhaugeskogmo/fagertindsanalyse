@@ -55,6 +55,14 @@ class App {
         document.getElementById('runMLBtn').addEventListener('click', () => {
             this.runMLAnalysis();
         });
+
+        // Table sorting
+        document.querySelectorAll('.data-table th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const sortKey = th.getAttribute('data-sort');
+                this.sortTable(sortKey);
+            });
+        });
     }
 
     setupDragDrop() {

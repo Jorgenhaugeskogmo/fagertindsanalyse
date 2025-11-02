@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fremtidsanalyse - Selskapsanalyse</title>
+    <title>Fagertindsanalyse - Selskapsanalyse</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +13,7 @@
     <div class="container">
         <header class="header">
             <div class="header-content">
-                <h1 class="logo">📊 Fremtidsanalyse</h1>
+                <h1 class="logo">Fagertindsanalyse</h1>
                 <p class="tagline">Analyser selskapsdata fra Brønnøysundregistrene</p>
             </div>
         </header>
@@ -98,15 +98,15 @@
                         <table class="data-table" id="resultsTable">
                             <thead>
                                 <tr>
-                                    <th>Organisasjonsnummer</th>
-                                    <th>Navn</th>
-                                    <th>Flytteår</th>
+                                    <th data-sort="orgnr" class="sortable">Organisasjonsnummer <span class="sort-indicator"></span></th>
+                                    <th data-sort="name" class="sortable">Navn <span class="sort-indicator"></span></th>
+                                    <th data-sort="year" class="sortable">Flytteår <span class="sort-indicator"></span></th>
                                     <th>Gammel adresse</th>
                                     <th>Ny adresse</th>
-                                    <th>Ansatte (start)*</th>
-                                    <th>Ansatte (nå)*</th>
-                                    <th>Endring*</th>
-                                    <th>% Endring*</th>
+                                    <th data-sort="empBefore" class="sortable">Ansatte (start)* <span class="sort-indicator"></span></th>
+                                    <th data-sort="empAfter" class="sortable">Ansatte (nå)* <span class="sort-indicator"></span></th>
+                                    <th data-sort="change" class="sortable">Endring* <span class="sort-indicator"></span></th>
+                                    <th data-sort="changePercent" class="sortable">% Endring* <span class="sort-indicator"></span></th>
                                 </tr>
                             </thead>
                             <tbody id="resultsTableBody"></tbody>
@@ -156,7 +156,7 @@
         </main>
 
         <footer class="footer">
-            <p>Fremtidsanalyse © 2025 | Data fra Brønnøysundregistrene</p>
+            <p>Fagertindsanalyse © 2025 | Data fra Brønnøysundregistrene</p>
         </footer>
     </div>
 
