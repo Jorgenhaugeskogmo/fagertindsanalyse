@@ -6,6 +6,8 @@ class App {
         this.currentSortColumn = null;
         this.currentSortDirection = 'asc';
         this.hideDuplicates = false;
+        this.currentRiskThreshold = 70;
+        this.allMLCompanies = null;
         this.init();
     }
 
@@ -72,6 +74,14 @@ class App {
             this.hideDuplicates = e.target.checked;
             this.applyDuplicateFilter();
         });
+
+        // Risk threshold slider (will be initialized after ML analysis)
+        const slider = document.getElementById('riskThresholdSlider');
+        if (slider) {
+            slider.addEventListener('input', (e) => {
+                this.updateRiskThreshold(parseInt(e.target.value));
+            });
+        }
     }
 
     setupDragDrop() {
@@ -782,6 +792,15 @@ class App {
                 // Run clustering
                 const clusters = mlAnalyzer.kMeansClustering(allMovers, 4);
                 
+                // Store all companies with risk scores for threshold filtering
+                this.allMLCompanies = allMovers.map(company => ({
+                    ...company,
+                    riskScore: mlAnalyzer.calculateRiskScore(company)
+                }));
+                
+                // Display cluster overview
+                this.displayClusterOverview(clusters);
+                
                 // Display cluster summary
                 this.displayClusterSummary(clusters);
                 
@@ -789,7 +808,7 @@ class App {
                 chartManager.createMLScatterPlot(clusters);
                 
                 // Display high-risk companies
-                this.displayHighRiskCompanies();
+                this.displayHighRiskCompanies(this.currentRiskThreshold);
                 
                 // Show results
                 document.getElementById('mlResults').style.display = 'block';
@@ -807,6 +826,68 @@ class App {
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
         }, 100);
+    }
+
+    displayClusterOverview(clusters) {
+        const container = document.getElementById('clusterOverview');
+        
+        const totalCompanies = clusters.reduce((sum, c) => sum + c.size, 0);
+        const highRiskCluster = clusters.find(c => c.risk === 'high');
+        const mediumRiskCluster = clusters.find(c => c.risk === 'medium');
+        const growthCluster = clusters.find(c => c.risk === 'growth');
+        const declineCluster = clusters.find(c => c.risk === 'decline');
+        
+        const avgYears = clusters.reduce((sum, c) => sum + c.stats.avgYearsSinceMove * c.size, 0) / totalCompanies;
+        const avgChange = clusters.reduce((sum, c) => sum + c.stats.avgChange * c.size, 0) / totalCompanies;
+        
+        let html = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">${totalCompanies}</div>
+                    <div style="opacity: 0.9;">Totalt analysert</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 1.5rem; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">${highRiskCluster ? highRiskCluster.size : 0}</div>
+                    <div style="opacity: 0.9;">Høy risiko</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 1.5rem; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">${mediumRiskCluster ? mediumRiskCluster.size : 0}</div>
+                    <div style="opacity: 0.9;">Medium risiko</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1.5rem; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">${growthCluster ? growthCluster.size : 0}</div>
+                    <div style="opacity: 0.9;">Ekspansjon</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 1.5rem; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;">${declineCluster ? declineCluster.size : 0}</div>
+                    <div style="opacity: 0.9;">Nedskalering</div>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.5rem; background: #f8fafc; border-radius: 8px;">
+                <div>
+                    <div style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Gjennomsnitt år siden flytting</div>
+                    <div style="font-size: 1.5rem; font-weight: 600; color: #1e293b;">${avgYears.toFixed(1)} år</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Gjennomsnitt ansattendring</div>
+                    <div style="font-size: 1.5rem; font-weight: 600; color: ${avgChange > 0 ? '#10b981' : '#ef4444'};">
+                        ${avgChange > 0 ? '+' : ''}${avgChange.toFixed(0)} ansatte
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+
+    updateRiskThreshold(threshold) {
+        this.currentRiskThreshold = threshold;
+        
+        // Update display
+        document.getElementById('riskThresholdValue').textContent = threshold;
+        
+        // Update high-risk companies list
+        this.displayHighRiskCompanies(threshold);
     }
 
     displayClusterSummary(clusters) {
@@ -830,8 +911,18 @@ class App {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.85rem;">
                         <div><strong>Antall:</strong> ${cluster.size}</div>
                         <div><strong>Gj.snitt år:</strong> ${cluster.stats.avgYearsSinceMove.toFixed(1)}</div>
-                        <div><strong>Gj.snitt endring:</strong> ${cluster.stats.avgChange.toFixed(0)}</div>
-                        <div><strong>Gj.snitt %:</strong> ${cluster.stats.avgPercentChange.toFixed(1)}%</div>
+                        <div><strong>Gj.snitt endring:</strong> ${cluster.stats.avgChange > 0 ? '+' : ''}${cluster.stats.avgChange.toFixed(0)}</div>
+                        <div><strong>Gj.snitt %:</strong> ${cluster.stats.avgPercentChange > 0 ? '+' : ''}${cluster.stats.avgPercentChange.toFixed(1)}%</div>
+                    </div>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid ${cluster.color}40; font-size: 0.875rem;">
+                        <div style="display: flex; justify-content: space-between; color: #64748b;">
+                            <span>Median endring:</span>
+                            <strong style="color: ${cluster.color};">${cluster.stats.medianChange > 0 ? '+' : ''}${cluster.stats.medianChange.toFixed(0)}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: #64748b; margin-top: 0.5rem;">
+                            <span>Gj.snitt størrelse:</span>
+                            <strong style="color: ${cluster.color};">${cluster.stats.avgSize.toFixed(0)} ansatte</strong>
+                        </div>
                     </div>
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid ${cluster.color}40; 
                                 text-align: center; font-size: 0.85rem; color: ${cluster.color}; font-weight: 600;">
@@ -891,20 +982,47 @@ class App {
         }, 100);
     }
 
-    displayHighRiskCompanies() {
-        const highRisk = mlAnalyzer.getHighRiskCompanies(70);
+    displayHighRiskCompanies(threshold = 70) {
+        const highRisk = mlAnalyzer.getHighRiskCompanies(threshold);
         const container = document.getElementById('highRiskCompanies');
         
+        // Update counter
+        document.getElementById('riskCompanyCount').textContent = `${highRisk.length} ${highRisk.length === 1 ? 'selskap' : 'selskaper'}`;
+        
         if (highRisk.length === 0) {
-            container.innerHTML = '<p>Ingen høyrisiko selskaper identifisert.</p>';
+            container.innerHTML = `
+                <div style="background: #f0fdf4; padding: 2rem; border-radius: 8px; border: 2px solid #86efac; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">✓</div>
+                    <h3 style="margin: 0 0 0.5rem 0; color: #16a34a;">Ingen høyrisiko selskaper ved denne terskelen</h3>
+                    <p style="margin: 0; color: #4ade80;">Senk terskelen for å se flere selskaper med risiko.</p>
+                </div>
+            `;
             return;
         }
 
+        // Calculate risk distribution
+        const veryHigh = highRisk.filter(c => c.riskScore >= 85).length;
+        const high = highRisk.filter(c => c.riskScore >= 75 && c.riskScore < 85).length;
+        const moderate = highRisk.filter(c => c.riskScore >= threshold && c.riskScore < 75).length;
+
         let html = `
             <div style="background: #fee; padding: 1.5rem; border-radius: 8px; border: 2px solid #f44;">
-                <h3 style="margin: 0 0 1rem 0; color: #c33;">
-                    Høyrisiko selskaper (Risikoscore ≥ 70)
-                </h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0; color: #c33;">
+                        Høyrisiko selskaper (Risikoscore ≥ ${threshold})
+                    </h3>
+                    <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
+                        <div style="padding: 0.5rem 1rem; background: #dc2626; color: white; border-radius: 4px;">
+                            <strong>${veryHigh}</strong> Svært høy (≥85)
+                        </div>
+                        <div style="padding: 0.5rem 1rem; background: #f97316; color: white; border-radius: 4px;">
+                            <strong>${high}</strong> Høy (75-84)
+                        </div>
+                        <div style="padding: 0.5rem 1rem; background: #fbbf24; color: white; border-radius: 4px;">
+                            <strong>${moderate}</strong> Moderat (${threshold}-74)
+                        </div>
+                    </div>
+                </div>
                 <p style="margin: 0 0 1rem 0; color: #666;">
                     Disse selskapene har høy sannsynlighet for å trenge nye lokaler snart.
                 </p>
